@@ -1,51 +1,146 @@
 # Nero
 
-Have some convenient tags in YAML config files:
+Nero is a RubyGem that offers predefined tags and allows you to effortlessly create custom ones for YAML configuration files.
+
+E.g. instead of having the following settings file in your Ruby/Rails project:
 
 ```yaml
 development:
-  # required value from ENV
-  github_token: !env GH_TOKEN
-
-  # optional
-  sentry_dsn: !env? SENTRY_DSN
-
-  # env-value coerced to integer with default value
-  port: !env/integer [PORT, 3000]
-
-  # combining tags
-  assets_folder: !path
-    - !env PROJECT_ROOT
-    - public/upload/assets
-
-  option: !env/integer? PORT
-
-  # Allows for: config[:log].debug?
-  log: !str/inquirer
-    - !env LOG_LEVEL
-
-  payment_url: !uri
-    - https://
-    - !env STRIP_HOST
-    - /payment/setup
-
-  url: !str/format
-    - https://%s%s
-    - !env HOST
-    - /login
-
-  debug: !env/bool [DEBUG, false]
-
+  # env-var with a fallback
+  secret: <%= ENV.fetch("SECRET", "dummy") %>
+  # NOTE *any* value provided is taken as `true`
+  debug?: <%= !!ENV["DEBUG"] %>
 production:
-  # this won't raise an error when absent when selecting
-  # :development as
-  secret: !env SECRET
+  # NOTE we can't fail-fast on ENV-var absence (i.e. use `ENV.fetch`),
+  # as it would require the env-var for development as well
+  secret: <%= ENV["SECRET"] %>
+  max_threads: <%= ENV.fetch("MAX_THREADS", 5).to_i %>
 ```
 
-Add one yourself:
+...turn it into this:
+```yaml
+development:
+  # env-var with a fallback
+  secret: !env [SECRET, "dummy"]
+  # Though the default is false, explicitly providing "false"/"off"/"n"/"no" is also possible.
+  debug?: !env/bool? DEBUG
+production:
+  # fail-fast on absence of SECRET
+  secret: !env SECRET
+  # always an integer
+  max_threads: !env/integer [MAX_THREADS, 5]
+```
+
+## Installation
+
+Install the gem and add to the application's Gemfile by executing:
+
+```bash
+bundle add nero
+```
+
+## Usage
+
+> [!WARNING]  
+> It's early days - the API and included tags will certainly change. Check the CHANGELOG when upgrading.
+
+Given the following config:
+```yaml
+# config/settings.yml
+development:
+  # env-var with a fallback
+  secret: !env [SECRET, "dummy"]
+  # Though the default is false, explicitly providing "false"/"off"/"n"/"no" is also possible.
+  debug?: !env/bool? DEBUG
+production:
+  # fail-fast on absence of SECRET
+  secret: !env SECRET
+  # always an integer
+  max_threads: !env/integer [MAX_THREADS, 5]
+```
+
+Loading this config:
+
+```ruby
+# Loading development
+Nero.load_config(Pathname.pwd / "config/settings.yml", root: :development)
+# ...and no ENV-vars were provided
+#=> {secret: "dummy", debug?: false}
+
+# ...with ENV {"debug" => "true"}
+#=> {secret: "dummy", debug?: true}
+
+# Loading production
+Nero.load_config(Pathname.pwd / "config/settings.yml", root: :production)
+# ...and no ENV-vars were provided
+# raises error: key not found: "SECRET" (KeyError)
+
+# ...with ENV {"SECRET" => "s3cr3t", "MAX_THREADS" => "3"}
+#=> {secret: "s3cr3t", max_threads: 3}
+```
+
+The following tags are provided:
+- `!env KEY`, `!env? KEY`  
+  Resp. to fetch or get a value from `ENV`:
+  ```yaml
+  ---
+  # required
+  secret: !env SECRET
+  # optional, with fallback:
+  secret: !env [SECRET, "dummy-fallback"]
+  # ...or nil
+  secret: !env? SECRET
+  ```
+- to coerce env-values:
+  - `env/integer`, `env/integer?`:  
+    ```yaml
+    port: !env/integer [PORT, 3000]
+    threads: !env/integer? THREADS # nil when not provided
+    ```
+  - `env/bool`, `env/bool?`:  
+    ```yaml
+    # required (valid values 'y(es)'/'n(o)', 'true'/'false', 'on'/'off')
+    over18: !env/bool OVER18
+    # optional, with fallback:
+    secure: !env/bool [SECURE, true]
+    # ...or false:
+    debug?: !env/bool? DEBUG
+    ```
+- `!path`  
+  Create a [Pathname](https://rubyapi.org/3.4/o/pathname):
+  ```yaml
+  config: !path config
+  # combining tags:
+  asset_folder: !path
+    - !env PROJECT_ROOT
+    - /public/assets
+  ```
+- `!uri`  
+  Create a [URI](https://rubyapi.org/3.4/o/uri):
+  ```yaml
+  smtp_url: !uri
+    - smtps://
+    - !env SMTP_CREDS
+    - @smtp.gmail.com
+  ```
+- `!str/format`  
+  Using Ruby's [format specifications](https://docs.ruby-lang.org/en/master/format_specifications_rdoc.html):
+  ```yaml
+  smtp_url: !str/format
+    - smtps://%s:%s@smtp.gmail.com
+    - !env SMTP_USER
+    - !env SMTP_PASS
+  # using references
+  smtp_url: !str/format
+    fmt: smtps://%<user>s:%<pass>s@smtp.gmail.com
+    user: !env SMTP_USER
+    pass: !env SMTP_PASS
+  ```
+
+TBD Add one yourself:
 ```ruby
 Nero.configure do
-  add_resolver("foo") do |coder|
+  add_tag("foo") do |coder|
     # coder.type is one of :scalar, :seq or :map
     # e.g. respective YAML:
     # ---
@@ -62,32 +157,6 @@ Nero.configure do
   end
 end
 ```
-
-
-
-TODO: Delete this and the text below, and describe your gem
-
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/nero`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-## Installation
-
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
-
-If bundler is not being used to manage dependencies, install the gem by executing:
-
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
-
-## Usage
-
-TODO: Write usage instructions here
 
 ## Development
 
