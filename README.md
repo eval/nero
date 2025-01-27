@@ -1,4 +1,6 @@
-# Nero
+# 🔥 Nero 
+
+[![Gem Version](https://badge.fury.io/rb/nero.svg)](https://badge.fury.io/rb/nero)
 
 Nero is a RubyGem that offers predefined tags and allows you to effortlessly create custom ones for YAML configuration files.
 
