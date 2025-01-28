@@ -327,7 +327,6 @@ RSpec.describe Nero do
       expect(load_config(config_file, root: "bar")).to eq 2
     end
 
-
     it "allows for aliases" do
       given_config(<<~YAML)
         ---

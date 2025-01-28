@@ -11,12 +11,12 @@ Gem::Specification.new do |spec|
   spec.summary = "Convenience YAML-tags"
 
   spec.description = <<~DESC
-  Some convenient YAML-tags...
-  - to get environment values: env, env?, env/integer, env/integer?, env/bool, env/bool?.
-  - to create a Pathname (!path) or URI (!uri)
-  - format a string: !str/format
+    Some convenient YAML-tags...
+    - to get environment values: env, env?, env/integer, env/integer?, env/bool, env/bool?.
+    - to create a Pathname (!path) or URI (!uri)
+    - format a string: !str/format
 
-  See README for examples.
+    See README for examples.
   DESC
   spec.homepage = "https://github.com/eval/nero"
   spec.license = "MIT"
