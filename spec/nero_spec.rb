@@ -307,7 +307,7 @@ RSpec.describe Nero do
   end
 
   describe "providing a root" do
-    it "returns the root" do
+    it "returns the root via a symbol" do
       given_config(<<~YAML)
         ---
         foo: 1
@@ -316,6 +316,17 @@ RSpec.describe Nero do
 
       expect(load_config(config_file, root: :foo)).to eq 1
     end
+
+    it "returns the root provided a string (ie Rails.env)" do
+      given_config(<<~YAML)
+        ---
+        foo: 1
+        bar: 2
+      YAML
+
+      expect(load_config(config_file, root: "bar")).to eq 2
+    end
+
 
     it "allows for aliases" do
       given_config(<<~YAML)

@@ -8,6 +8,7 @@ require "uri" # why needed?
 
 # TODO fail on unknown tag
 # TODO show missing env's at once
+# TODO raise when missing arg(s) for tag
 module Nero
   class Error < StandardError; end
 
@@ -135,7 +136,7 @@ module Nero
     if file.exist?
       unresolved = Util.deep_symbolize_keys(YAML.load_file(file,
         permitted_classes: [Symbol, TagResolver], aliases: true)).then do
-        root ? _1[root] : _1
+        root ? _1[root.to_sym] : _1
       end
 
       deep_resolve(unresolved, resolvers: @resolvers)
