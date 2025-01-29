@@ -5,6 +5,7 @@ loader = Zeitwerk::Loader.for_gem
 loader.setup
 
 require "uri" # why needed?
+require "yaml"
 
 # TODO fail on unknown tag
 # TODO show missing env's at once
@@ -137,20 +138,35 @@ module Nero
     end
   end
 
+  @yaml_options = {
+    permitted_classes: [Symbol, TagResolver],
+    aliases: true
+  }
+
   def self.load_config(file, root: nil)
     add_tags!
 
     if file.exist?
-      unresolved = Util.deep_symbolize_keys(YAML.load_file(file,
-        permitted_classes: [Symbol, TagResolver], aliases: true)).then do
-        root ? _1[root.to_sym] : _1
-      end
-
-      deep_resolve(unresolved, resolvers: @resolvers)
+      process_yaml(YAML.load_file(file, **@yaml_options), root:)
     else
       raise "Can't find file #{file}"
     end
   end
+
+  def self.load(raw, root: nil)
+    add_tags!
+
+    process_yaml(YAML.load(raw, **@yaml_options), root:)
+  end
+
+  def self.process_yaml(yaml, root: nil)
+    unresolved = Util.deep_symbolize_keys(yaml).then do
+      root ? _1[root.to_sym] : _1
+    end
+
+    deep_resolve(unresolved, resolvers: @resolvers)
+  end
+  private_class_method :process_yaml
 
   def self.add_tags!
     @resolvers.keys.each do
