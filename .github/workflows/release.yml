@@ -34,5 +34,5 @@ jobs:
             spec = Bundler.definition.specs.find {|s| s.name == ARGV[0] }
             raise "No spec for #{ARGV[0]}" unless spec
             print [spec.name, spec.version, spec.platform].join(":")
-          ' "sequel-xtdb")"
+          ' "nero")"
         gem await "${gem_tuple}"
