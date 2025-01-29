@@ -58,8 +58,15 @@ module Nero
     (@resolvers ||= {})["!#{name}"] = block
   end
 
+  def self.env_fetch(k, fallback = nil, all_optional: "dummy")
+    fallback ||= all_optional if ENV["NERO_ENV_ALL_OPTIONAL"]
+
+    fallback.nil? ? ENV.fetch(k) : ENV.fetch(k, fallback)
+  end
+  private_class_method :env_fetch
+
   add_resolver("env/integer") do |coder|
-    Integer(ENV.fetch(*(coder.scalar || coder.seq)))
+    Integer(env_fetch(*(coder.scalar || coder.seq), all_optional: "999"))
   end
 
   add_resolver("env/integer?") do |coder|
@@ -80,7 +87,7 @@ module Nero
       end
     end
 
-    coerce[ENV.fetch(*(coder.scalar || coder.seq))]
+    coerce[env_fetch(*(coder.scalar || coder.seq), all_optional: "false")]
   end
 
   add_resolver("env/bool?") do |coder|
@@ -101,7 +108,7 @@ module Nero
   end
 
   add_resolver("env") do |coder|
-    ENV.fetch(*(coder.scalar || coder.seq))
+    env_fetch(*(coder.scalar || coder.seq))
   end
 
   add_resolver("env?") do |coder|

@@ -372,6 +372,22 @@ RSpec.describe Nero do
     end
   end
 
+  describe "skip check on env-var presence" do
+    it "skips check using a special nero env-var" do
+      given_config(<<~YAML)
+        ---
+        port:   !env/integer PORT
+        debug:  !env/bool DEBUG
+        secret: !env SECRET
+      YAML
+      set_ENV("NERO_ENV_ALL_OPTIONAL" => "true")
+
+      expect {
+        load_config(config_file)
+      }.to_not raise_error
+    end
+  end
+
   # TODO accepts pathname and uses that
   # TODO shows fullpath as error when not exist
 
