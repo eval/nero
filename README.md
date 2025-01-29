@@ -4,32 +4,28 @@
 
 Nero is a RubyGem that offers predefined tags and allows you to effortlessly create custom ones for YAML configuration files.
 
-E.g. instead of having the following settings file in your Ruby/Rails project:
+E.g. instead of having the following settings file in your Rails project:
 
 ```yaml
 development:
-  # env-var with a fallback
   secret: <%= ENV.fetch("SECRET", "dummy") %>
-  # NOTE *any* value provided is taken as `true`
-  debug?: <%= !!ENV["DEBUG"] %>
+  # custom logic how to get a boolean...
+  debug?: <%= ENV["DEBUG"] == "true" %>
 production:
-  # NOTE we can't fail-fast on ENV-var absence (i.e. use `ENV.fetch`),
-  # as it would require the env-var for development as well
+  # any ENV.fetch in this section would hamper local development...
   secret: <%= ENV["SECRET"] %>
+  # custom coercion logic
   max_threads: <%= ENV.fetch("MAX_THREADS", 5).to_i %>
 ```
 
 ...turn it into this:
 ```yaml
 development:
-  # env-var with a fallback
   secret: !env [SECRET, "dummy"]
-  # Though the default is false, explicitly providing "false"/"off"/"n"/"no" is also possible.
   debug?: !env/bool? DEBUG
 production:
-  # fail-fast on absence of SECRET
+  # required _only_ when loading production
   secret: !env SECRET
-  # always an integer
   max_threads: !env/integer [MAX_THREADS, 5]
 ```
 
@@ -52,7 +48,7 @@ Given the following config:
 development:
   # env-var with a fallback
   secret: !env [SECRET, "dummy"]
-  # Though the default is false, explicitly providing "false"/"off"/"n"/"no" is also possible.
+  # Though the default is false, explicitly providing "false"/"off"/"n"/"no" also works.
   debug?: !env/bool? DEBUG
 production:
   # fail-fast on absence of SECRET
@@ -65,7 +61,7 @@ Loading this config:
 
 ```ruby
 # Loading development
-Nero.load_config(Pathname.pwd / "config/settings.yml", root: :development)
+Nero.load_config("config/settings", root: :development)
 # ...and no ENV-vars were provided
 #=> {secret: "dummy", debug?: false}
 
@@ -73,7 +69,7 @@ Nero.load_config(Pathname.pwd / "config/settings.yml", root: :development)
 #=> {secret: "dummy", debug?: true}
 
 # Loading production
-Nero.load_config(Pathname.pwd / "config/settings.yml", root: :production)
+Nero.load_config("config/settings", root: :production)
 # ...and no ENV-vars were provided
 # raises error: key not found: "SECRET" (KeyError)
 
@@ -139,10 +135,10 @@ The following tags are provided:
     pass: !env SMTP_PASS
   ```
 
-TBD Add one yourself:
+Add one yourself:
 ```ruby
-Nero.configure do
-  add_tag("foo") do |coder|
+Nero.configure do |nero|
+  nero.add_tag("foo") do |coder|
     # coder.type is one of :scalar, :seq or :map
     # e.g. respective YAML:
     # ---
@@ -157,6 +153,12 @@ Nero.configure do
     # Find the value in the respective attribute, e.g. `coder.scalar`:
     coder.scalar.upcase
   end
+
+  # Other configuration options:
+  #
+  # `config_dir` (default: Pathname.pwd) - path used for expanding non-Pathnames passed to `load_config`, e.g.
+  # `Nero.load_config(:app)` loads file `Pathname.pwd / "app.yml"`.
+  nero.config_dir = Rails.root / "config"
 end
 ```
 
