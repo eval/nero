@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
 module Nero
-  VERSION = "0.1.0"
+  # NOTE this is written upon release via:
+  # $ rake gem:build[version=0.3.0]
+  VERSION = "0.2.0"
 end

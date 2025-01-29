@@ -1,0 +1,38 @@
+---
+on:
+  push:
+    tags:
+      - '*'
+
+name: Release Gem
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+    - uses: rubygems/configure-rubygems-credentials@main
+      with:
+        role-to-assume: rg_oidc_akr_qdpnqssh74zr5e48j9d7
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        bundler-cache: true
+        ruby-version: ruby
+    - name: Release
+      run: |
+        # Writing version.rb changes the Gemfile.lock which
+        # halts subsequent rake tasks when in frozen mode
+        bundle config set frozen false
+        bin/rake gem:build[${{ github.ref_name }}] gem:release
+    - name: Wait for release to propagate
+      run: |
+        gem install rubygems-await
+        gem_tuple="$(ruby -rbundler/setup -rbundler -e '
+            spec = Bundler.definition.specs.find {|s| s.name == ARGV[0] }
+            raise "No spec for #{ARGV[0]}" unless spec
+            print [spec.name, spec.version, spec.platform].join(":")
+          ' "sequel-xtdb")"
+        gem await "${gem_tuple}"
