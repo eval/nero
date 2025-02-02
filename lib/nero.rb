@@ -31,7 +31,10 @@ module Nero
     end
   end
   extend Resolvable
-  private_class_method :try_resolve, :gen_resolve_tryer, :deep_resolve
+  private_class_method \
+    :deep_resolve,
+    :gen_resolve_tryer,
+    :try_resolve
 
   class TagResolver
     include Resolvable
@@ -42,7 +45,7 @@ module Nero
 
     def resolve(ctx)
       resolve_nested!(ctx)
-      ctx[:resolvers][@coder.tag].call(@coder)
+      ctx[:tags][@coder.tag].call(@coder)
     end
 
     def resolve_nested!(ctx)
@@ -55,9 +58,110 @@ module Nero
     end
   end
 
-  def self.add_resolver(name, &block)
-    (@resolvers ||= {})["!#{name}"] = block
+  class Configuration
+    attr_reader :tags
+    attr_accessor :config_dir
+
+    def add_tag(name, &block)
+      (@tags ||= {})["!#{name}"] = block
+    end
   end
+
+  def self.configuration
+    @configuration ||= Configuration.new
+  end
+
+  def self.configure
+    yield configuration if block_given?
+  end
+
+  def self.add_default_tags!
+    configure do |config|
+      config.add_tag("env/integer") do |coder|
+        Integer(env_fetch(*(coder.scalar || coder.seq), all_optional: "999"))
+      end
+
+      config.add_tag("env/integer?") do |coder|
+        Integer(ENV[coder.scalar]) if ENV[coder.scalar]
+      end
+
+      config.add_tag("env/bool") do |coder|
+        re_true = /y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON/
+        re_false = /n|N|no|No|NO|false|False|FALSE|off|Off|OFF/
+
+        coerce = ->(s) do
+          case s
+          when TrueClass, FalseClass then s
+          when re_true then true
+          when re_false then false
+          else
+            raise "bool value should be one of y(es)/n(o), on/off, true/false (got #{s.inspect})"
+          end
+        end
+
+        coerce[env_fetch(*(coder.scalar || coder.seq), all_optional: "false")]
+      end
+
+      config.add_tag("env/bool?") do |coder|
+        re_true = /y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON/
+        re_false = /n|N|no|No|NO|false|False|FALSE|off|Off|OFF/
+
+        coerce = ->(s) do
+          case s
+          when TrueClass, FalseClass then s
+          when re_true then true
+          when re_false then false
+          else
+            raise "bool value should be one of y(es)/n(o), on/off, true/false (got #{s.inspect})"
+          end
+        end
+
+        ENV[coder.scalar] ? coerce[ENV[coder.scalar]] : false
+      end
+
+      config.add_tag("env") do |coder|
+        env_fetch(*(coder.scalar || coder.seq))
+      end
+
+      config.add_tag("env?") do |coder|
+        fetch_args = coder.scalar ? [coder.scalar, nil] : coder.seq
+        ENV.fetch(*fetch_args)
+      end
+
+      config.add_tag("path") do |coder|
+        Pathname.new(coder.scalar || coder.seq.join("/"))
+      end
+
+      config.add_tag("uri") do |coder|
+        URI(coder.scalar || coder.seq.join)
+      end
+
+      config.add_tag("str/format") do |coder|
+        case coder.type
+        when :seq
+          sprintf(*coder.seq)
+        when :map
+          m = Util.deep_symbolize_keys(coder.map)
+          fmt = m.delete(:fmt)
+          sprintf(fmt, m)
+        else
+          coder.scalar
+        end
+      end
+    end
+  end
+  private_class_method :add_default_tags!
+
+  def self.reset_configuration!
+    @configuration = nil
+
+    configure do |config|
+      config.config_dir = Pathname.pwd
+    end
+
+    add_default_tags!
+  end
+  reset_configuration!
 
   def self.env_fetch(k, fallback = nil, all_optional: "dummy")
     fallback ||= all_optional if ENV["NERO_ENV_ALL_OPTIONAL"]
@@ -65,78 +169,6 @@ module Nero
     fallback.nil? ? ENV.fetch(k) : ENV.fetch(k, fallback)
   end
   private_class_method :env_fetch
-
-  add_resolver("env/integer") do |coder|
-    Integer(env_fetch(*(coder.scalar || coder.seq), all_optional: "999"))
-  end
-
-  add_resolver("env/integer?") do |coder|
-    Integer(ENV[coder.scalar]) if ENV[coder.scalar]
-  end
-
-  add_resolver("env/bool") do |coder|
-    re_true = /y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON/
-    re_false = /n|N|no|No|NO|false|False|FALSE|off|Off|OFF/
-
-    coerce = ->(s) do
-      case s
-      when TrueClass, FalseClass then s
-      when re_true then true
-      when re_false then false
-      else
-        raise "bool value should be one of y(es)/n(o), on/off, true/false (got #{s.inspect})"
-      end
-    end
-
-    coerce[env_fetch(*(coder.scalar || coder.seq), all_optional: "false")]
-  end
-
-  add_resolver("env/bool?") do |coder|
-    re_true = /y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON/
-    re_false = /n|N|no|No|NO|false|False|FALSE|off|Off|OFF/
-
-    coerce = ->(s) do
-      case s
-      when TrueClass, FalseClass then s
-      when re_true then true
-      when re_false then false
-      else
-        raise "bool value should be one of y(es)/n(o), on/off, true/false (got #{s.inspect})"
-      end
-    end
-
-    ENV[coder.scalar] ? coerce[ENV[coder.scalar]] : false
-  end
-
-  add_resolver("env") do |coder|
-    env_fetch(*(coder.scalar || coder.seq))
-  end
-
-  add_resolver("env?") do |coder|
-    fetch_args = coder.scalar ? [coder.scalar, nil] : coder.seq
-    ENV.fetch(*fetch_args)
-  end
-
-  add_resolver("path") do |coder|
-    Pathname.new(coder.scalar || coder.seq.join("/"))
-  end
-
-  add_resolver("uri") do |coder|
-    URI(coder.scalar || coder.seq.join)
-  end
-
-  add_resolver("str/format") do |coder|
-    case coder.type
-    when :seq
-      sprintf(*coder.seq)
-    when :map
-      m = Util.deep_symbolize_keys(coder.map)
-      fmt = m.delete(:fmt)
-      sprintf(fmt, m)
-    else
-      coder.scalar
-    end
-  end
 
   @yaml_options = {
     permitted_classes: [Symbol, TagResolver],
@@ -146,12 +178,24 @@ module Nero
   def self.load_config(file, root: nil)
     add_tags!
 
+    file = resolve_file(file)
+
     if file.exist?
       process_yaml(YAML.load_file(file, **@yaml_options), root:)
     else
       raise "Can't find file #{file}"
     end
   end
+
+  def self.resolve_file(file)
+    case file
+    when Pathname then file
+    # TODO expand full path
+    else
+      configuration.config_dir / "#{file}.yml"
+    end
+  end
+  private_class_method :resolve_file
 
   def self.load(raw, root: nil)
     add_tags!
@@ -164,12 +208,12 @@ module Nero
       root ? _1[root.to_sym] : _1
     end
 
-    deep_resolve(unresolved, resolvers: @resolvers)
+    deep_resolve(unresolved, tags: configuration.tags)
   end
   private_class_method :process_yaml
 
   def self.add_tags!
-    @resolvers.keys.each do
+    configuration.tags.keys.each do
       YAML.add_tag(_1, TagResolver)
     end
   end

@@ -4,9 +4,10 @@ require "tempfile"
 require "yaml"
 
 RSpec.describe Nero do
-  after(:each) { ensure_config_cleaned! }
+  after(:each) { delete_config_file! }
+  after(:each) { described_class.reset_configuration! }
 
-  def ensure_config_cleaned!
+  def delete_config_file!
     @config_file&.tap do
       _1.close
       File.unlink(_1.path)
@@ -27,6 +28,8 @@ RSpec.describe Nero do
       f.rewind
     end
   end
+
+  def nero_config(...) = described_class.configure(...)
 
   def config_file
     Pathname.new(@config_file.path)
@@ -358,10 +361,12 @@ RSpec.describe Nero do
     end
   end
 
-  describe "adding a custom resolver" do
-    it "works" do
-      described_class.add_resolver("inc") do |coder|
-        Integer(coder.scalar).next
+  describe "adding a custom tag" do
+    specify "is added to the nero-config" do
+      nero_config do |cfg|
+        cfg.add_tag("inc") do |coder|
+          Integer(coder.scalar).next
+        end
       end
       given_config(<<~YAML)
         ---
