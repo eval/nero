@@ -3,5 +3,5 @@
 module Nero
   # NOTE this is written upon release via:
   # $ rake gem:build[version=0.3.0]
-  VERSION = "0.2.0"
+  VERSION = "0.4.0.pre"
 end
