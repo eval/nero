@@ -2,32 +2,31 @@
 
 [![Gem Version](https://badge.fury.io/rb/nero.svg)](https://badge.fury.io/rb/nero)
 
-Nero is a RubyGem that offers predefined tags and allows you to effortlessly create custom ones for YAML configuration files.
+Nero is a RubyGem that offers declarative YAML-tags to simplify config files, e.g. for requiring and coercion of env-vars.  
+Additionally, it allows you to create your own.
 
-E.g. instead of having the following settings file in your Rails project:
+**Sample:**
 
 ```yaml
 development:
-  secret: <%= ENV.fetch("SECRET", "dummy") %>
-  # custom logic how to get a boolean...
-  debug?: <%= ENV["DEBUG"] == "true" %>
-production:
-  # any ENV.fetch in this section would hamper local development...
-  secret: <%= ENV["SECRET"] %>
-  # custom coercion logic
-  max_threads: <%= ENV.fetch("MAX_THREADS", 5).to_i %>
-```
-
-...turn it into this:
-```yaml
-development:
+  # optional env-var with default value
   secret: !env [SECRET, "dummy"]
+  # boolean coercion
   debug?: !env/bool? DEBUG
 production:
-  # required _only_ when loading production
+  # required env-var (only required in production)
   secret: !env SECRET
+  # int coercion
   max_threads: !env/integer [MAX_THREADS, 5]
+  # something custom
+  cache_ttl: !duration [2, hours]
 ```
+
+## Highlights
+
+* 💎 declarative YAML-tags for e.g. requiring and coercing env-vars
+* 🛠️ add custom tags
+* ♻️ Zeitwerk-only dependency
 
 ## Installation
 
