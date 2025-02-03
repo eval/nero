@@ -9,12 +9,12 @@ Additionally, it allows you to create your own.
 
 ```yaml
 development:
-  # optional env-var with default value
+  # env-var with default value
   secret: !env [SECRET, "dummy"]
-  # boolean coercion
+  # optional env-var with coercion
   debug?: !env/bool? DEBUG
 production:
-  # required env-var (only required in production)
+  # required env-var (only when getting the production-root)
   secret: !env SECRET
   # int coercion
   max_threads: !env/integer [MAX_THREADS, 5]
@@ -26,6 +26,7 @@ production:
 
 * 💎 declarative YAML-tags for e.g. requiring and coercing env-vars
 * 🛠️ add custom tags
+* 🛤️ `Rails.application.config_for` stand-in
 * ♻️ Zeitwerk-only dependency
 
 ## Installation
