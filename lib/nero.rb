@@ -175,7 +175,8 @@ module Nero
     aliases: true
   }
 
-  def self.load_config(file, root: nil)
+  def self.load_config(file, root: nil, env: nil)
+    root = root || env
     add_tags!
 
     file = resolve_file(file)
@@ -197,7 +198,8 @@ module Nero
   end
   private_class_method :resolve_file
 
-  def self.load(raw, root: nil)
+  def self.load(raw, root: nil, env: nil)
+    root = root || env
     add_tags!
 
     process_yaml(YAML.load(raw, **@yaml_options), root:)

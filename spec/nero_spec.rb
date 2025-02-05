@@ -330,6 +330,16 @@ RSpec.describe Nero do
       expect(load_config(config_file, root: "bar")).to eq 2
     end
 
+    it "allows for providing root as :env like config_for" do
+      given_config(<<~YAML)
+        ---
+        foo: 1
+        bar: 2
+      YAML
+
+      expect(load_config(config_file, env: "bar")).to eq 2
+    end
+
     it "allows for aliases" do
       given_config(<<~YAML)
         ---
