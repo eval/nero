@@ -176,13 +176,13 @@ module Nero
   }
 
   def self.load_config(file, root: nil, env: nil)
-    root = root || env
+    root ||= env
     add_tags!
 
     file = resolve_file(file)
 
     if file.exist?
-      process_yaml(YAML.load_file(file, **@yaml_options), root:)
+      process_yaml(yaml_load_file(file, @yaml_options), root:)
     else
       raise "Can't find file #{file}"
     end
@@ -199,10 +199,10 @@ module Nero
   private_class_method :resolve_file
 
   def self.load(raw, root: nil, env: nil)
-    root = root || env
+    root ||= env
     add_tags!
 
-    process_yaml(YAML.load(raw, **@yaml_options), root:)
+    process_yaml(yaml_load(raw, @yaml_options), root:)
   end
 
   def self.process_yaml(yaml, root: nil)
@@ -213,6 +213,24 @@ module Nero
     deep_resolve(unresolved, tags: configuration.tags)
   end
   private_class_method :process_yaml
+
+  def self.yaml_load_file(file, opts = {})
+    if Psych::VERSION < "4"
+      YAML.load_file(file)
+    else
+      YAML.load_file(file, **opts)
+    end
+  end
+  private_class_method :yaml_load_file
+
+  def self.yaml_load(file, opts = {})
+    if Psych::VERSION < "4"
+      YAML.load(file)
+    else
+      YAML.load(file, **opts)
+    end
+  end
+  private_class_method :yaml_load
 
   def self.add_tags!
     configuration.tags.keys.each do
