@@ -45,7 +45,7 @@ module Nero
 
     def resolve(ctx)
       resolve_nested!(ctx)
-      ctx[:tags][@coder.tag].call(@coder)
+      ctx[:tags][@coder.tag].call(@coder, ctx)
     end
 
     def resolve_nested!(ctx)
@@ -75,8 +75,23 @@ module Nero
     yield configuration if block_given?
   end
 
+  # helpers for configuration
+  #module TagHelpers
+  #  def to_boolean(s)
+  #  end
+  #end
+
   def self.add_default_tags!
+    #extend TagHelpers
+
     configure do |config|
+      config.add_tag("ref") do |coder, ctx|
+        # validate: non-empty coder.seq, only strs, path must exists in ctx[:config]
+
+        path = coder.seq.map(&:to_sym)
+        deep_resolve(ctx[:config].dig(*path), **ctx)
+      end
+
       config.add_tag("env/integer") do |coder|
         Integer(env_fetch(*(coder.scalar || coder.seq), all_optional: "999"))
       end
@@ -210,7 +225,7 @@ module Nero
       root ? _1[root.to_sym] : _1
     end
 
-    deep_resolve(unresolved, tags: configuration.tags)
+    deep_resolve(unresolved, tags: configuration.tags, config: unresolved)
   end
   private_class_method :process_yaml
 

@@ -307,6 +307,55 @@ RSpec.describe Nero do
           eq({some_url: URI("https://example.org/some/path")})
       end
     end
+
+    describe "ref-tag" do
+      it "includes value of referenced node" do
+        given_config(<<~YAML)
+          ---
+          base:
+            url: https://foo.org
+          bar_url: !str/format
+            - '%s/to/bar'
+            - !ref [base, url]
+        YAML
+
+        expect(load_config).to \
+          include({bar_url: "https://foo.org/to/bar"})
+      end
+
+      xit "raises when ref is invalid, ie empty, not all strings"
+      xit "raises when path is invalid"
+
+      it "can point to leafs that need resolving" do
+        given_config(<<~YAML)
+          ---
+          base:
+            url: !env BASE_URL
+          bar_url: !str/format
+            - '%s/to/bar'
+            - !ref [base, url]
+        YAML
+        set_ENV("BASE_URL" => "https://foo.org")
+
+        expect(load_config).to \
+          include({bar_url: "https://foo.org/to/bar"})
+      end
+
+      specify "refs are relative to root" do
+        given_config(<<~YAML)
+          ---
+          root:
+            base_url: !env BASE_URL
+            bar_url: !str/format
+              - '%s/to/bar'
+              - !ref [base_url]
+        YAML
+        set_ENV("BASE_URL" => "https://foo.org")
+
+        expect(load_config(config_file, root: :root)).to \
+          include({bar_url: "https://foo.org/to/bar"})
+      end
+    end
   end
 
   describe "providing a root" do
