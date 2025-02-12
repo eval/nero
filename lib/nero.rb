@@ -76,13 +76,13 @@ module Nero
   end
 
   # helpers for configuration
-  #module TagHelpers
+  # module TagHelpers
   #  def to_boolean(s)
   #  end
-  #end
+  # end
 
   def self.add_default_tags!
-    #extend TagHelpers
+    # extend TagHelpers
 
     configure do |config|
       config.add_tag("ref") do |coder, ctx|
