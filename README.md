@@ -128,12 +128,30 @@ The following tags are provided:
     - smtps://%s:%s@smtp.gmail.com
     - !env SMTP_USER
     - !env SMTP_PASS
-  # using references
+  
+  # pass it a map (including a key 'fmt') to use references
   smtp_url: !str/format
     fmt: smtps://%<user>s:%<pass>s@smtp.gmail.com
     user: !env SMTP_USER
     pass: !env SMTP_PASS
   ```
+- `!ref`  
+  Include values from elsewhere:
+  ```yaml
+  # simple
+  min_threads: !env [MIN_THREADS, !ref [max_threads]]
+  max_threads: 5
+  
+  # oauth_callback -refs-> base.url -refs-> base.host
+  base:
+    host: !env [HOST]
+    url: !str/format ['https://%s', !ref[base, host]]
+  oauth_callback: !str/format
+    - '%s/oauth/callback'
+    - !ref[base, url]
+  ```
+  NOTE future version should raise properly over ref-ing a non-existing path.
+  
 
 Add one yourself:
 ```ruby
@@ -152,6 +170,11 @@ Nero.configure do |nero|
     #
     # Find the value in the respective attribute, e.g. `coder.scalar`:
     coder.scalar.upcase
+
+    # NOTE when needing just one argument, supporting both scalar and seq allows for chaining:
+    # a: !my/inc 4 # scalar suffices
+    # ...but when chaining, a seq is required:
+    # a: !my/inc [!my/square 2]
   end
 
   # Other configuration options:
