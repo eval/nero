@@ -149,6 +149,13 @@ The following tags are provided:
   oauth_callback: !str/format
     - '%s/oauth/callback'
     - !ref[base, url]
+
+  # refs are resolved within the tree of the selected root.
+  # The following config won't work when doing `Nero.load_config(:app, root: :prod)`
+  dev:
+    max_threads: 5
+  prod:
+    max_threads: !env[MAX_THREADS, !ref[dev, max_threads]]
   ```
   NOTE future version should raise properly over ref-ing a non-existing path.
   
