@@ -330,12 +330,15 @@ RSpec.describe Nero do
         given_config(<<~YAML)
           ---
           base:
-            url: !env BASE_URL
+            host: !env HOST
+            url: !str/format
+              - 'https://%s'
+              - !ref [base, host]
           bar_url: !str/format
             - '%s/to/bar'
             - !ref [base, url]
         YAML
-        set_ENV("BASE_URL" => "https://foo.org")
+        set_ENV("HOST" => "foo.org")
 
         expect(load_config).to \
           include({bar_url: "https://foo.org/to/bar"})
