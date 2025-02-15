@@ -1,4 +1,18 @@
 ## [Unreleased]
+...
+
+## [0.4.0] - 2025-02-15
+
+- Add `!ref`-tag:
+  ```ruby
+  Nero.load(<<~YAML)
+    min_threads: !env [MIN_THREADS, !ref [max_threads]]
+    max_threads: 5
+  end
+  # => {min_threads: 5, max_threads: 5}
+  ```
+- Support Psych v3  
+  ...so it can used with Rails v6
 
 ## [0.3.0] - 2025-02-02
 
