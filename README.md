@@ -191,6 +191,35 @@ Nero.configure do |nero|
   nero.config_dir = Rails.root / "config"
 end
 ```
+<!-- newer version
+With a custom class you can do more complex stuff
+```ruby
+class GitRootTag < Nero::BaseTag
+  # Example usage:
+  # config_path: !path/git [config]
+
+  coder_types :seq
+
+  def resolve(ctx)
+    find_up(ctx[:file], ".git")&.join(*super)
+  end
+
+  # Find `file` in `path` or any of `path`'s ancestors.
+  # Returns full Pathname when found, nil otherwise.
+  def find_up(path, file)
+    (path = path.parent) until path.root? || (path / file).exist?
+    path unless path.root? 
+  end
+end
+
+Nero.configure { _1.add_tag("path/git", klass: GitRootTag) }
+
+# config/some.yml
+config_folder: !path/git [config]
+
+Nero.load_config((Pathname.pwd / "config/some.yml"), permitted_classes: [GitRootTag])
+```
+-->
 
 ## Development
 
