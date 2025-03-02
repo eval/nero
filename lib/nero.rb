@@ -6,6 +6,7 @@ loader.setup
 
 require "uri" # why needed?
 require "yaml"
+require "pathname"
 
 # TODO fail on unknown tag
 # TODO show missing env's at once
