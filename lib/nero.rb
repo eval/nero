@@ -214,17 +214,19 @@ module Nero
   end
   private_class_method :resolve_file
 
-  def self.load(raw, root: nil, env: nil)
+  def self.load(raw, root: nil, env: nil, resolve: true)
     root ||= env
     add_tags!
 
-    process_yaml(yaml_load(raw, @yaml_options), root:)
+    process_yaml(yaml_load(raw, @yaml_options), root:, resolve:)
   end
 
-  def self.process_yaml(yaml, root: nil)
+  def self.process_yaml(yaml, root: nil, resolve: true)
     unresolved = Util.deep_symbolize_keys(yaml).then do
       root ? _1[root.to_sym] : _1
     end
+
+    return unresolved unless resolve
 
     deep_resolve(unresolved, tags: configuration.tags, config: unresolved)
   end
