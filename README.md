@@ -26,7 +26,7 @@ production:
 
 * 💎 declarative YAML-tags for e.g. requiring and coercing env-vars
 * 🛠️ add custom tags
-* 🛤️ `Rails.application.config_for` stand-in
+* 🛤️ `Rails.application.config_for` drop-in
 * ♻️ Zeitwerk-only dependency
 
 ## Installation
@@ -41,6 +41,8 @@ bundle add nero
 
 > [!WARNING]  
 > It's early days - the API and included tags will certainly change. Check the CHANGELOG when upgrading.
+
+### loading a config
 
 Given the following config:
 ```yaml
@@ -76,6 +78,17 @@ Nero.load_config("config/settings", root: :production)
 # ...with ENV {"SECRET" => "s3cr3t", "MAX_THREADS" => "3"}
 #=> {secret: "s3cr3t", max_threads: 3}
 ```
+> [!TIP]  
+> The following configuration would make `Nero.load_config` a drop-in replacement for [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for):
+```ruby
+Nero.configure do |config|
+  config.config_dir = Rails.root / "config"
+end
+
+Nero.load_config(:settings, env: Rails.env)
+```
+
+### built-in tags
 
 The following tags are provided:
 - `!env KEY`, `!env? KEY`  
@@ -90,10 +103,11 @@ The following tags are provided:
   secret: !env? SECRET
   ```
 - to coerce env-values:
-  - `env/integer`, `env/integer?`:  
+  - `env/integer`, `env/integer?`, `env/float`, `env/float?`:  
     ```yaml
     port: !env/integer [PORT, 3000]
     threads: !env/integer? THREADS # nil when not provided
+    threshold: !env/float CUTOFF
     ```
   - `env/bool`, `env/bool?`:  
     ```yaml
@@ -104,6 +118,11 @@ The following tags are provided:
     # ...or false:
     debug?: !env/bool? DEBUG
     ```
+> [!TIP]  
+> Make all env-var's optional by providing `ENV["NERO_ENV_ALL_OPTIONAL"]`, e.g.
+```shell
+$ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
+```
 - `!path`  
   Create a [Pathname](https://rubyapi.org/3.4/o/pathname):
   ```yaml
@@ -139,7 +158,7 @@ The following tags are provided:
   Include values from elsewhere:
   ```yaml
   # simple
-  min_threads: !env [MIN_THREADS, !ref [max_threads]]
+  min_threads: !env/integer [MIN_THREADS, !ref [max_threads]]
   max_threads: 5
   
   # oauth_callback -refs-> base.url -refs-> base.host
@@ -158,68 +177,86 @@ The following tags are provided:
     max_threads: !env[MAX_THREADS, !ref[dev, max_threads]]
   ```
   NOTE future version should raise properly over ref-ing a non-existing path.
-  
 
-Add one yourself:
-```ruby
-Nero.configure do |nero|
-  nero.add_tag("foo") do |coder|
-    # coder.type is one of :scalar, :seq or :map
-    # e.g. respective YAML:
-    # ---
-    # !foo bar
-    # ---
-    # !foo
-    #   - bar
-    # ---
-    # !foo
-    #   bar: baz
-    #
-    # Find the value in the respective attribute, e.g. `coder.scalar`:
-    coder.scalar.upcase
+### custom tags
 
-    # NOTE when needing just one argument, supporting both scalar and seq allows for chaining:
-    # a: !my/inc 4 # scalar suffices
-    # ...but when chaining, a seq is required:
-    # a: !my/inc [!my/square 2]
-  end
+Three ways to do this:
 
-  # Other configuration options:
-  #
-  # `config_dir` (default: Pathname.pwd) - path used for expanding non-Pathnames passed to `load_config`, e.g.
-  # `Nero.load_config(:app)` loads file `Pathname.pwd / "app.yml"`.
-  nero.config_dir = Rails.root / "config"
-end
-```
-<!-- newer version
-With a custom class you can do more complex stuff
-```ruby
-class GitRootTag < Nero::BaseTag
-  # Example usage:
-  # config_path: !path/git [config]
+1. a block  
+    ```ruby
+    Nero.configure do |nero|
+      nero.add_tag("upcase") do |tag|
+        # `tag` is a `Nero::BaseTag`.
+        # In YAML args are provided as scalar, seq or map:
+        # ---
+        # k: !upcase bar
+        # ---
+        # k: !upcase [bar] # equivalent to:
+        # k: !upcase
+        #   - bar
+        # ---
+        # k: !upcase
+        #   bar: baz
+        #
+        # Find these args via `tag.args` (Array or Hash):
+        case tag.args
+        when Hash
+          tag.args.each_with_object({}) {|(k,v), acc| acc[k] = v.upcase }
+        else
+          tag.args.map(&:upcase)
+        end
 
-  coder_types :seq
+        # NOTE though you might just need one argument, it's helpful to accept a seq nonetheless
+        # as it allows for chaining:
+        # a: !my/inc 4 # scalar suffices
+        # ...but when chaining, it comes as a seq:
+        # a: !my/inc [!my/square 2]
+      end
+    end
+    ```
+1. re-use existing tag-class  
+   Some tag-classes have options that allow for simple customizations (like `coerce` here):
+    ```ruby
+    Nero.configure do |nero|
+      nero.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
+    end
+    ```
+1. custom class  
+   ```ruby
+   class RotTag < Nero::BaseTag
+     # Configure:
+     # ```
+     # config.add_tag("rot/12", klass: RotTag[n: 12])
+     # config.add_tag("rot/10", klass: RotTag[n: 10]) {|secret| "#{secret} (try breaking this!)" }
+     # ```
+     #
+     # Usage in YAML:
+     # ```
+     # secret: !rot/12 some message
+     # very_secret: !rot/10 [ !env [ MSG, some message ] ]
+     # ```
+     # => {secret: "EAyq yqEEmsq", very_secret: "Cywo woCCkqo (try breaking this!)"}
+   
+     # By overriding `init_options` we restrict or require options, provide defaults and can do any other setup.
+     # By default an option is available via `options[:foo]`.
+     def init_options(n: 10)
+       super # no specific assignments, so available via `options[:n]`.
+     end
 
-  def resolve(ctx)
-    find_up(ctx[:file], ".git")&.join(*super)
-  end
+     def chars
+       @chars ||= (('a'..'z').to_a + ('A'..'Z').to_a + ('0'..'9').to_a)
+     end
 
-  # Find `file` in `path` or any of `path`'s ancestors.
-  # Returns full Pathname when found, nil otherwise.
-  def find_up(path, file)
-    (path = path.parent) until path.root? || (path / file).exist?
-    path unless path.root? 
-  end
-end
-
-Nero.configure { _1.add_tag("path/git", klass: GitRootTag) }
-
-# config/some.yml
-config_folder: !path/git [config]
-
-Nero.load_config((Pathname.pwd / "config/some.yml"), permitted_classes: [GitRootTag])
-```
--->
+     def resolve(**) # currently no keywords are passed, but `**` allows for future ones.
+       # Here we actually do the work.
+       # `args` are the resolved nested args (so e.g. `!env MSG` is already resolved).
+       # `config` is the tag's config, and contains e.g. the block.
+       block = config.fetch(:block, :itself.to_proc)
+       # String#tr replaces any character from the first collection with the same position in the other:
+       args.join.tr(chars.join, chars.rotate(options[:n]).join).then(&block)
+     end
+   end
+   ```
 
 ## Development
 

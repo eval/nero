@@ -426,8 +426,8 @@ RSpec.describe Nero do
   describe "adding a custom tag" do
     specify "is added to the nero-config" do
       nero_config do |cfg|
-        cfg.add_tag("inc") do |coder|
-          Integer(coder.scalar).next
+        cfg.add_tag("inc") do |tag|
+          Integer(*tag.args).next
         end
       end
       given_config(<<~YAML)
