@@ -131,29 +131,29 @@ module Nero
     end
   end
 
+  # Requires an env-var to be available and coerces the value.
+  # When tag-name ends with "?", the env-var is optional.
+  #
+  # Given config:
+  # config.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
+  # config.add_tag("env/upcase?", klass: Nero::EnvTag[coerce: :upcase])
+
+  # Then YAML => result:
+  # "--- env/upcase [MSG, Hello World]" => "HELLO WORLD"
+  # "--- env/upcase MSG" => raises when not ENV.has_key? "MSG"
+  # "--- env/upcase? MSG" => nil
+  #
+  # Args supported:
+  # - scalar
+  #  name of env-var, e.g. `!env HOME`
+  # - seq
+  #  name of env-var and fallback, e.g. `!env [HOME, /root]`
+
+  # Options:
+  # - coerce - symbol or proc to be applied to value of env-var.
+  #   when using coerce, the block is ignoerd.
+  #
   class EnvTag < BaseTag
-    # Requires an env-var to be available and coerces the value.
-    # When tag-name ends with "?", the env-var is optional.
-    #
-    # Given config:
-    # config.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
-    # config.add_tag("env/upcase?", klass: Nero::EnvTag[coerce: :upcase])
-
-    # Then YAML => result:
-    # "--- env/upcase [MSG, Hello World]" => "HELLO WORLD"
-    # "--- env/upcase MSG" => raises when not ENV.has_key? "MSG"
-    # "--- env/upcase? MSG" => nil
-    #
-    # Args supported:
-    # - scalar
-    #  name of env-var, e.g. `!env HOME`
-    # - seq
-    #  name of env-var and fallback, e.g. `!env [HOME, /root]`
-
-    # Options:
-    # - coerce - symbol or proc to be applied to value of env-var.
-    #   when using ceroce, the block is ignoerd.
-    #
     def resolve(**)
       if coercer
         coercer.call(env_value) unless env_value.nil?
