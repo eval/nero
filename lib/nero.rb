@@ -232,7 +232,7 @@ module Nero
       raise <<~ERR unless root_path
         #{tag_name}: failed to find root-path (ie an ancestor of #{ctx[:yaml_file]} containing #{options[:containing].inspect}).
       ERR
-      root_path.join(*super)
+      root_path.join(*args).then(&config.fetch(:block, :itself.to_proc))
     end
 
     def root_path
