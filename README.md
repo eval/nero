@@ -47,6 +47,20 @@ Install the gem and add to the application's Gemfile by executing:
 bundle add nero
 ```
 
+## Configuration
+
+```ruby
+Nero.configure do |nero|
+  nero.config_dir = Rails.root / "config"
+  # Now `Nero.load_file(:foo)` looks for `Rails.root / "config/foo.yml"`.
+
+  # Add custom tags
+  nero.add_tag("upcase") do |tag|
+    # tag is an instance of [Nero::BaseTag](https://rubydoc.info/github/eval/nero/main/Nero/BaseTag)
+  end
+end
+```
+
 ## Usage
 
 > [!WARNING]  
@@ -201,7 +215,7 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
 
 Three ways to do this:
 
-1. a block  
+1. a block
     ```ruby
     Nero.configure do |nero|
       nero.add_tag("upcase") do |tag|
@@ -225,14 +239,15 @@ Three ways to do this:
           tag.args.map(&:upcase)
         end
 
-        # NOTE though you might just need one argument, it's helpful to accept a seq nonetheless
-        # as it allows for chaining:
+        # NOTE though a tag might just need one argument (ie scalar),
+        # it's helpful to accept a seq as it allows for chaining:
         # a: !my/inc 4 # scalar suffices
-        # ...but when chaining, it comes as a seq:
-        # a: !my/inc [!my/square 2]
+        # ...but when chaining, it needs to be a seq:
+        # a: !my/inc [ !my/square 2 ]
       end
     end
     ```
+    Blocks are passed instances of [Nero::BaseTag](https://rubydoc.info/github/eval/nero/main/Nero/BaseTag).
 1. re-use existing tag-class  
    You can add an existing tag under a better fitting name this way.  
    Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
