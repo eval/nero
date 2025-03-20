@@ -250,7 +250,9 @@ Three ways to do this:
      # Configure:
      # ```
      # config.add_tag("rot/12", klass: RotTag[n: 12])
-     # config.add_tag("rot/10", klass: RotTag[n: 10]) {|secret| "#{secret} (try breaking this!)" }
+     # config.add_tag("rot/10", klass: RotTag[n: 10]) do |secret|
+     #   "#{secret} (try breaking this!)"
+     # end
      # ```
      #
      # Usage in YAML:
@@ -260,7 +262,8 @@ Three ways to do this:
      # ```
      # => {secret: "EAyq yqEEmsq", very_secret: "Cywo woCCkqo (try breaking this!)"}
    
-     # By overriding `init_options` we restrict or require options, provide defaults and can do any other setup.
+     # By overriding `init_options` we can restrict/require options,
+     # provide default values and do any other setup.  
      # By default an option is available via `options[:foo]`.
      def init_options(n: 10)
        super # no specific assignments, so available via `options[:n]`.
@@ -271,7 +274,7 @@ Three ways to do this:
      end
 
      def resolve(**) # currently no keywords are passed, but `**` allows for future ones.
-       # Here we actually do the work.
+       # Here we actually do the work: get the args, rotate strings and delegate to the block.
        # `args` are the resolved nested args (so e.g. `!env MSG` is already resolved).
        # `config` is the tag's config, and contains e.g. the block.
        block = config.fetch(:block, :itself.to_proc)
