@@ -11,14 +11,24 @@ Additionally, it allows you to create your own.
 development:
   # env-var with default value
   secret: !env [SECRET, "dummy"]
+
   # optional env-var with coercion
   debug?: !env/bool? DEBUG
+
 production:
-  # required env-var (only when getting the production-root)
+  # required env-var (not required during development)
   secret: !env SECRET
-  # int coercion
+
+  # coercion
   max_threads: !env/integer [MAX_THREADS, 5]
-  # something custom
+
+  # refer to other keys
+  min_threads: !env/integer [MIN_THREADS, !ref max_threads ]
+
+  # descriptive names
+  asset_folder: !path/rails_root [ public/assets ]
+
+  # easy to add custom tags
   cache_ttl: !duration [2, hours]
 ```
 
@@ -132,6 +142,15 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
     - !env PROJECT_ROOT
     - /public/assets
   ```
+- `!path/git_root`, `!path/rails_root`  
+  Create a Pathname relative to some root-path.  
+  The root-path is expected to be an existing ancestor folder of the yaml-config being parsed.  
+  It's found by traversing up and checking for the presence of specific files/folders, e.g. '.git' (`!path/git_root`) or 'config.ru' (`!path/rails_root`).  
+  While the root-path needs to exist, the resulting Pathname doesn't need to.
+  ```yaml
+  project_root: !path/git_root
+  config_folder: !path/rails_root [ config ]
+  ```
 - `!uri`  
   Create a [URI](https://rubyapi.org/3.4/o/uri):
   ```yaml
@@ -215,10 +234,14 @@ Three ways to do this:
     end
     ```
 1. re-use existing tag-class  
-   Some tag-classes have options that allow for simple customizations (like `coerce` here):
+   You can add an existing tag under a better fitting name this way.  
+   Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
     ```ruby
     Nero.configure do |nero|
       nero.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
+
+      # Alias for path/git_root:
+      nero.add_tag("path/project_root", klass: Nero::PathRootTag[containing: '.git'])
     end
     ```
 1. custom class  
