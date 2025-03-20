@@ -11,14 +11,24 @@ Additionally, it allows you to create your own.
 development:
   # env-var with default value
   secret: !env [SECRET, "dummy"]
+
   # optional env-var with coercion
   debug?: !env/bool? DEBUG
+
 production:
-  # required env-var (only when getting the production-root)
+  # required env-var (not required during development)
   secret: !env SECRET
-  # int coercion
+
+  # coercion
   max_threads: !env/integer [MAX_THREADS, 5]
-  # something custom
+
+  # refer to other keys
+  min_threads: !env/integer [MIN_THREADS, !ref max_threads ]
+
+  # descriptive names
+  asset_folder: !path/rails_root [ public/assets ]
+
+  # easy to add custom tags
   cache_ttl: !duration [2, hours]
 ```
 
@@ -132,6 +142,15 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
     - !env PROJECT_ROOT
     - /public/assets
   ```
+- `!path/git_root`, `!path/rails_root`  
+  Create a Pathname relative to some root-path.  
+  The root-path is expected to be an existing ancestor folder of the yaml-config being parsed.  
+  It's found by traversing up and checking for the presence of specific files/folders, e.g. '.git' (`!path/git_root`) or 'config.ru' (`!path/rails_root`).  
+  While the root-path needs to exist, the resulting Pathname doesn't need to.
+  ```yaml
+  project_root: !path/git_root
+  config_folder: !path/rails_root [ config ]
+  ```
 - `!uri`  
   Create a [URI](https://rubyapi.org/3.4/o/uri):
   ```yaml
@@ -215,10 +234,14 @@ Three ways to do this:
     end
     ```
 1. re-use existing tag-class  
-   Some tag-classes have options that allow for simple customizations (like `coerce` here):
+   You can add an existing tag under a better fitting name this way.  
+   Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
     ```ruby
     Nero.configure do |nero|
       nero.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
+
+      # Alias for path/git_root:
+      nero.add_tag("path/project_root", klass: Nero::PathRootTag[containing: '.git'])
     end
     ```
 1. custom class  
@@ -227,7 +250,9 @@ Three ways to do this:
      # Configure:
      # ```
      # config.add_tag("rot/12", klass: RotTag[n: 12])
-     # config.add_tag("rot/10", klass: RotTag[n: 10]) {|secret| "#{secret} (try breaking this!)" }
+     # config.add_tag("rot/10", klass: RotTag[n: 10]) do |secret|
+     #   "#{secret} (try breaking this!)"
+     # end
      # ```
      #
      # Usage in YAML:
@@ -237,7 +262,8 @@ Three ways to do this:
      # ```
      # => {secret: "EAyq yqEEmsq", very_secret: "Cywo woCCkqo (try breaking this!)"}
    
-     # By overriding `init_options` we restrict or require options, provide defaults and can do any other setup.
+     # By overriding `init_options` we can restrict/require options,
+     # provide default values and do any other setup.  
      # By default an option is available via `options[:foo]`.
      def init_options(n: 10)
        super # no specific assignments, so available via `options[:n]`.
@@ -248,7 +274,7 @@ Three ways to do this:
      end
 
      def resolve(**) # currently no keywords are passed, but `**` allows for future ones.
-       # Here we actually do the work.
+       # Here we actually do the work: get the args, rotate strings and delegate to the block.
        # `args` are the resolved nested args (so e.g. `!env MSG` is already resolved).
        # `config` is the tag's config, and contains e.g. the block.
        block = config.fetch(:block, :itself.to_proc)

@@ -35,6 +35,13 @@ RSpec.describe Nero do
     Pathname.new(@config_file.path)
   end
 
+  def with_file_present(f, &block)
+    file = FileUtils.touch(f).first
+    yield file
+  ensure
+    FileUtils.rm(file)
+  end
+
   describe "default tags" do
     describe "env-tag" do
       it "uses the env-var" do
@@ -357,6 +364,37 @@ RSpec.describe Nero do
 
         expect(load_config(config_file, root: :root)).to \
           include({bar_url: "https://foo.org/to/bar"})
+      end
+    end
+
+    describe "path/root-tags" do
+      it "returns a path based on the containing-option" do
+        nero_config do |cfg|
+          cfg.add_tag("path/project_root", klass: Nero::PathRootTag[containing: ".project"])
+        end
+        given_config(<<~YAML)
+          ---
+          config_folder: !path/project_root [ config ]
+          project_root: !path/project_root
+        YAML
+
+        with_file_present(config_file.parent / ".project") do
+          expect(load_config(config_file)).to include(config_folder: a_kind_of(Pathname))
+        end
+      end
+
+      it "raises when root-path cannot be found" do
+        nero_config do |cfg|
+          cfg.add_tag("path/project_root", klass: Nero::PathRootTag[containing: ".never_there"])
+        end
+        given_config(<<~YAML)
+          ---
+          folder: !path/project_root [lib]
+        YAML
+
+        expect {
+          load_config(config_file).to include(folder: a_kind_of(Pathname))
+        }.to raise_error(/path\/project_root: failed to find root-path/)
       end
     end
   end

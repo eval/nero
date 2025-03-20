@@ -211,6 +211,40 @@ module Nero
     end
   end
 
+  # Construct path relative to some root-path.
+  # Root-paths are expected to be ancestors of the yaml-file being parsed.
+  # They are found by traversing up and checking for specific files/folders, e.g. '.git' or 'Gemfile'.
+  # Any argument is appended to the root-path, constructing a path-instance that may exist.
+  class PathRootTag < BaseTag
+    # Config:
+    # config.add_tag("path/git_root", klass: PathRootTag[containing: ".git"])
+    # config.add_tag("path/rails_root", klass: PathRootTag[containing: "Gemfile"])
+    #
+    # YAML:
+    # project_root: !path/git_root
+    # config_path: !path/git_root [ config ]
+    def init_options(containing:)
+      super
+    end
+
+    def resolve(**)
+      # TODO validate upfront
+      raise <<~ERR unless root_path
+        #{tag_name}: failed to find root-path (ie an ancestor of #{ctx[:yaml_file]} containing #{options[:containing].inspect}).
+      ERR
+      root_path.join(*super)
+    end
+
+    def root_path
+      find_up(ctx[:yaml_file], options[:containing])
+    end
+
+    def find_up(path, containing)
+      (path = path.parent) until path.root? || (path / containing).exist?
+      path unless path.root?
+    end
+  end
+
   def self.add_default_tags!
     configure do |config|
       config.add_tag("ref") do |tag|
@@ -238,6 +272,8 @@ module Nero
       config.add_tag("path") do |tag|
         Pathname.new(tag.args.join("/"))
       end
+      config.add_tag("path/git_root", klass: PathRootTag[containing: ".git"])
+      config.add_tag("path/rails_root", klass: PathRootTag[containing: "config.ru"])
 
       config.add_tag("uri") do |tag|
         URI.join(*tag.args.join)
@@ -306,12 +342,12 @@ module Nero
   end
 
   def self.process_yaml(yaml, root: nil, resolve: true, config_file: nil)
-    # config_file ||= (Pathname.pwd / __FILE__)
+    config_file ||= (Pathname.pwd / __FILE__)
 
     unresolved = Util.deep_symbolize_keys(yaml).then do
       root ? _1[root.to_sym] : _1
     end
-    ctx = {tags: configuration.tags, yaml: unresolved}
+    ctx = {tags: configuration.tags, yaml: unresolved, yaml_file: config_file}
     init_tags!(collect_tags(unresolved), ctx:)
 
     return unresolved unless resolve
