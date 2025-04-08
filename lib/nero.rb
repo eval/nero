@@ -14,6 +14,54 @@ require "pathname"
 module Nero
   class Error < StandardError; end
 
+  module DigExt
+    # Like dig, but raises ArgumentError when path does not exist.
+    def dig!(k0, *k)
+      k.unshift(k0)
+
+      unless paths.include?(k)
+        raise ArgumentError, "path not found #{k}"
+      end
+      dig(*k)
+    end
+
+    private
+
+    def paths
+      @paths ||= gather_paths(self).to_set
+    end
+
+    def gather_paths(item, acc: [], path: [])
+      acc += [path]
+
+      case item
+      when NilClass
+        []
+      when Hash
+        item.flat_map { |(k, v)| gather_paths(v, acc: acc, path: path + [k]) }
+      when Array
+        item.each_with_index.flat_map do |item, ix|
+          gather_paths(item, acc: acc, path: path + [ix])
+        end
+      else
+        acc
+      end
+    end
+  end
+
+  class Config < Hash
+    include DigExt
+
+    def self.for(v)
+      case v
+      when self then v
+      when Hash then self.[](v)
+      else
+        v
+      end
+    end
+  end
+
   module Resolvable
     def try_resolve(object)
       if object.respond_to?(:resolve)
@@ -347,7 +395,7 @@ module Nero
 
     return unresolved unless resolve
 
-    deep_resolve(unresolved)
+    Config.for(deep_resolve(unresolved))
   end
   private_class_method :process_yaml
 

@@ -507,3 +507,39 @@ RSpec.describe Nero do
 
   # TODO it throws when seeing an unknown tag
 end
+
+RSpec.describe Nero::Config do
+  def cfg_for(...)
+    described_class.for(...)
+  end
+
+  describe "::for" do
+    it "instantiates from a Hash" do
+      expect(cfg_for({a: 1})).to be_a(described_class)
+    end
+
+    it "returns a Nero::Config as is" do
+      cfg = cfg_for(a: 1)
+
+      expect(cfg_for(cfg)).to equal(cfg)
+    end
+
+    it "returns whatever else is passed to it" do
+      expect(cfg_for(1)).to eq 1
+    end
+  end
+
+  describe "#dig!" do
+    it "works like #dig for known paths" do
+      expect(cfg_for(a: {b: 2}).dig!(:a)).to eq({b: 2})
+      expect(cfg_for(a: {b: 2}).dig!(:a, :b)).to eq 2
+      expect(cfg_for(a: [{b: 2}]).dig!(:a, 0, :b)).to eq 2
+    end
+
+    it "fails for unknown paths" do
+      expect {
+        cfg_for(a: {b: 2}).dig!(:c)
+      }.to raise_error(ArgumentError, /path not found/)
+    end
+  end
+end
