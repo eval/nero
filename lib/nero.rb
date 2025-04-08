@@ -15,35 +15,30 @@ module Nero
   class Error < StandardError; end
 
   module Resolvable
-    def try_resolve(ctx, object)
+    def try_resolve(object)
       if object.respond_to?(:resolve)
-        object.resolve(**ctx)
+        object.resolve
       else
         object
       end
     end
 
-    def gen_resolve_tryer(ctx)
-      method(:try_resolve).curry.call(ctx)
+    def deep_resolve(object)
+      Util.deep_transform_values(object, &method(:try_resolve))
     end
 
-    def deep_resolve(object, **ctx)
-      Util.deep_transform_values(object, &gen_resolve_tryer(ctx))
-    end
-
-    def resolve_nested!(coder, ctx = {})
+    def resolve_nested!(coder)
       case coder.type
       when :seq
-        coder.seq.map!(&gen_resolve_tryer(ctx))
+        coder.seq.map!(&method(:try_resolve))
       when :map
-        coder.map = deep_resolve(coder.map, **ctx)
+        coder.map = deep_resolve(coder.map)
       end
     end
   end
   extend Resolvable
   private_class_method \
     :deep_resolve,
-    :gen_resolve_tryer,
     :try_resolve
 
   class Configuration
@@ -104,7 +99,7 @@ module Nero
 
     def args
       @args ||= begin
-        resolve_nested!(coder, {})
+        resolve_nested!(coder)
         case coder.type
         when :map then Util.deep_symbolize_keys(coder.map)
         else
@@ -251,7 +246,7 @@ module Nero
         # validate: non-empty coder.seq, only strs, path must exists in ctx[:config]
 
         path = tag.args.map(&:to_sym)
-        deep_resolve(tag.ctx[:yaml].dig(*path), **{})
+        deep_resolve(tag.ctx[:yaml].dig(*path))
       end
 
       config.add_tag("env", klass: EnvTag)
@@ -352,8 +347,7 @@ module Nero
 
     return unresolved unless resolve
 
-    # NOTE originally ctx was passed at this point. Maybe delete this.
-    deep_resolve(unresolved, **{})
+    deep_resolve(unresolved)
   end
   private_class_method :process_yaml
 
