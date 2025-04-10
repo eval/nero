@@ -352,7 +352,7 @@ module Nero
     @configuration = nil
 
     configure do |config|
-      config.config_dir = Pathname.pwd
+      config.config_dir = Pathname.new("config").expand_path
     end
 
     add_default_tags!
@@ -383,6 +383,14 @@ module Nero
   def self.load_file(file, root: nil, resolve: true, **yaml_options)
     config_file = (file.is_a?(Pathname) ? file : Pathname.new(file)).expand_path
     process_yaml(yaml_load_file(config_file, yaml_options(yaml_options)), root:, config_file:, resolve:)
+  end
+
+  def self.config_for(file, root: nil, env: nil, **yaml_options)
+    root ||= env
+
+    config_file = (file.is_a?(Pathname) ? file : configuration.config_dir / "#{file}.yml").expand_path
+
+    load_file(config_file, root:, **yaml_options)
   end
 
   def self.load_config(file, root: nil, env: nil, resolve: true)
