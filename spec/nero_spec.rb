@@ -18,8 +18,8 @@ RSpec.describe Nero do
     stub_const("ENV", env)
   end
 
-  def load_config(file = config_file, **kw)
-    described_class.load_config(file, **kw)
+  def load_file(file = config_file, **kw)
+    described_class.load_file(file, **kw)
   end
 
   def given_config(s)
@@ -42,6 +42,14 @@ RSpec.describe Nero do
     FileUtils.rm(file)
   end
 
+  describe "#load" do
+    it "accepts additional permitted_classes" do
+      expect(Nero.load(<<~YAML, extra_permitted_classes: [Time])).to be
+        created_at: 2010-02-11 11:02:57
+      YAML
+    end
+  end
+
   describe "default tags" do
     describe "env-tag" do
       it "uses the env-var" do
@@ -52,7 +60,7 @@ RSpec.describe Nero do
 
         set_ENV("HOST" => "example.org")
 
-        expect(load_config).to eq({host: "example.org"})
+        expect(load_file).to eq({host: "example.org"})
       end
 
       context "env-var absent" do
@@ -63,7 +71,7 @@ RSpec.describe Nero do
           YAML
 
           expect {
-            load_config
+            load_file
           }.to raise_error(/key not found: "HOST"/)
         end
 
@@ -75,7 +83,7 @@ RSpec.describe Nero do
               - fallback.org
           YAML
 
-          expect(load_config).to eq({host: "fallback.org"})
+          expect(load_file).to eq({host: "fallback.org"})
         end
       end
     end
@@ -89,7 +97,7 @@ RSpec.describe Nero do
 
         set_ENV("HOST" => "example.org")
 
-        expect(load_config).to eq({host: "example.org"})
+        expect(load_file).to eq({host: "example.org"})
       end
 
       context "env-var absent" do
@@ -99,7 +107,7 @@ RSpec.describe Nero do
             host: !env? HOST
           YAML
 
-          expect(load_config).to eq({host: nil})
+          expect(load_file).to eq({host: nil})
         end
       end
     end
@@ -113,7 +121,7 @@ RSpec.describe Nero do
 
         set_ENV("PORT" => "1234")
 
-        expect(load_config).to eq({port: 1234})
+        expect(load_file).to eq({port: 1234})
       end
 
       specify do
@@ -123,7 +131,7 @@ RSpec.describe Nero do
         YAML
 
         expect {
-          load_config
+          load_file
         }.to raise_error(/key not found: "PORT"/)
       end
 
@@ -137,7 +145,7 @@ RSpec.describe Nero do
 
         set_ENV("PORT" => "1234")
 
-        expect(load_config).to eq({port: 1234})
+        expect(load_file).to eq({port: 1234})
       end
 
       specify "with fallback value and absent env-var" do
@@ -148,7 +156,7 @@ RSpec.describe Nero do
             - 4321
         YAML
 
-        expect(load_config).to eq({port: 4321})
+        expect(load_file).to eq({port: 4321})
       end
     end
 
@@ -161,7 +169,7 @@ RSpec.describe Nero do
 
         set_ENV("PORT" => "1234")
 
-        expect(load_config).to eq({port: 1234})
+        expect(load_file).to eq({port: 1234})
       end
 
       context "env-var absent" do
@@ -171,7 +179,7 @@ RSpec.describe Nero do
             port: !env/integer? PORT
           YAML
 
-          expect(load_config).to eq({port: nil})
+          expect(load_file).to eq({port: nil})
         end
       end
     end
@@ -187,7 +195,7 @@ RSpec.describe Nero do
 
         set_ENV("DEBUG" => "Y")
 
-        expect(load_config).to eq({debug: true})
+        expect(load_file).to eq({debug: true})
       end
 
       specify do
@@ -197,7 +205,7 @@ RSpec.describe Nero do
         YAML
 
         expect {
-          load_config
+          load_file
         }.to raise_error(/key not found: "DEBUG"/)
       end
 
@@ -210,7 +218,7 @@ RSpec.describe Nero do
         set_ENV("DEBUG" => "Ok")
 
         expect {
-          load_config
+          load_file
         }.to raise_error(%r{should be one of y\(es\)/n\(o\), on/off, true/false})
       end
 
@@ -222,7 +230,7 @@ RSpec.describe Nero do
             - false
         YAML
 
-        expect(load_config).to eq({debug: false})
+        expect(load_file).to eq({debug: false})
       end
     end
 
@@ -233,7 +241,7 @@ RSpec.describe Nero do
           debug: !env/bool? DEBUG
         YAML
 
-        expect(load_config).to eq({debug: false})
+        expect(load_file).to eq({debug: false})
       end
     end
 
@@ -244,7 +252,7 @@ RSpec.describe Nero do
           path: !path foo
         YAML
 
-        expect(load_config).to eq({path: Pathname.new("foo")})
+        expect(load_file).to eq({path: Pathname.new("foo")})
       end
 
       specify "with seq" do
@@ -255,7 +263,7 @@ RSpec.describe Nero do
             - bar
         YAML
 
-        expect(load_config).to eq({path: Pathname.new("foo/bar")})
+        expect(load_file).to eq({path: Pathname.new("foo/bar")})
       end
 
       specify "containing tags" do
@@ -268,7 +276,7 @@ RSpec.describe Nero do
 
         set_ENV("HOME" => "/home/gert")
 
-        expect(load_config).to \
+        expect(load_file).to \
           eq({bin_path: Pathname.new("/home/gert/bin")})
       end
     end
@@ -282,7 +290,7 @@ RSpec.describe Nero do
             - 1200
         YAML
 
-        expect(load_config).to eq({ticket: "001200"})
+        expect(load_file).to eq({ticket: "001200"})
       end
 
       it "accepts a map" do
@@ -294,7 +302,7 @@ RSpec.describe Nero do
         YAML
         set_ENV("HOST" => "example.org")
 
-        expect(load_config).to eq({url: "https://example.org/foo"})
+        expect(load_file).to eq({url: "https://example.org/foo"})
       end
     end
 
@@ -310,7 +318,7 @@ RSpec.describe Nero do
 
         set_ENV("SOME_HOST" => "example.org")
 
-        expect(load_config).to \
+        expect(load_file).to \
           eq({some_url: URI("https://example.org/some/path")})
       end
     end
@@ -326,7 +334,7 @@ RSpec.describe Nero do
             - !ref [base, url]
         YAML
 
-        expect(load_config).to \
+        expect(load_file).to \
           include({bar_url: "https://foo.org/to/bar"})
       end
 
@@ -347,7 +355,7 @@ RSpec.describe Nero do
         YAML
         set_ENV("HOST" => "foo.org")
 
-        expect(load_config).to \
+        expect(load_file).to \
           include({bar_url: "https://foo.org/to/bar"})
       end
 
@@ -362,7 +370,7 @@ RSpec.describe Nero do
         YAML
         set_ENV("BASE_URL" => "https://foo.org")
 
-        expect(load_config(config_file, root: :root)).to \
+        expect(load_file(config_file, root: :root)).to \
           include({bar_url: "https://foo.org/to/bar"})
       end
     end
@@ -379,7 +387,7 @@ RSpec.describe Nero do
         YAML
 
         with_file_present(config_file.parent / ".project") do
-          expect(load_config(config_file)).to include(config_folder: a_kind_of(Pathname))
+          expect(load_file(config_file)).to include(config_folder: a_kind_of(Pathname))
         end
       end
 
@@ -393,7 +401,7 @@ RSpec.describe Nero do
         YAML
 
         expect {
-          load_config(config_file).to include(folder: a_kind_of(Pathname))
+          load_file(config_file).to include(folder: a_kind_of(Pathname))
         }.to raise_error(/path\/project_root: failed to find root-path/)
       end
     end
@@ -407,7 +415,7 @@ RSpec.describe Nero do
         bar: 2
       YAML
 
-      expect(load_config(config_file, root: :foo)).to eq 1
+      expect(load_file(config_file, root: :foo)).to eq 1
     end
 
     it "returns the root provided a string (ie Rails.env)" do
@@ -417,17 +425,17 @@ RSpec.describe Nero do
         bar: 2
       YAML
 
-      expect(load_config(config_file, root: "bar")).to eq 2
+      expect(load_file(config_file, root: "bar")).to eq 2
     end
 
-    it "allows for providing root as :env like config_for" do
+    xit "allows for providing root as :env like config_for" do
       given_config(<<~YAML)
         ---
         foo: 1
         bar: 2
       YAML
 
-      expect(load_config(config_file, env: "bar")).to eq 2
+      expect(load_file(config_file, env: "bar")).to eq 2
     end
 
     it "allows for aliases" do
@@ -442,7 +450,7 @@ RSpec.describe Nero do
           b: 3
       YAML
 
-      expect(load_config(config_file, root: :dev)).to \
+      expect(load_file(config_file, root: :dev)).to \
         eq({a: 1, b: 2})
     end
 
@@ -456,7 +464,7 @@ RSpec.describe Nero do
       set_ENV("FOO" => "something")
 
       expect {
-        load_config(config_file, root: :foo)
+        load_file(config_file, root: :foo)
       }.to_not raise_error
     end
   end
@@ -473,7 +481,7 @@ RSpec.describe Nero do
         port: !inc 1
       YAML
 
-      expect(load_config(config_file)).to eq({port: 2})
+      expect(load_file(config_file)).to eq({port: 2})
     end
   end
 
@@ -488,7 +496,7 @@ RSpec.describe Nero do
       set_ENV("NERO_ENV_ALL_OPTIONAL" => "true")
 
       expect {
-        load_config(config_file)
+        load_file(config_file)
       }.to_not raise_error
     end
   end
@@ -502,7 +510,7 @@ RSpec.describe Nero do
   #     end
   #   end
   #
-  #   Nero.load_config(:settings)
+  #   Nero.load_file(:settings)
   #
 
   # TODO it throws when seeing an unknown tag

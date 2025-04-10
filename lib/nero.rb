@@ -90,7 +90,11 @@ module Nero
     :try_resolve
 
   class Configuration
-    attr_reader :tags, :config_dir
+    attr_reader :config_dir
+
+    def tags
+      @tags ||= {}
+    end
 
     def config_dir=(dir)
       @config_dir = Pathname(dir).expand_path
@@ -99,7 +103,7 @@ module Nero
     def add_tag(name, klass: BaseTag, &block)
       klass, klass_options = klass
 
-      (@tags ||= {})[name] = {klass:}.tap do |h|
+      tags[name] = {klass:}.tap do |h|
         h[:block] = block if block
         h[:options] = klass_options if klass_options
       end
@@ -110,8 +114,17 @@ module Nero
     @configuration ||= Configuration.new
   end
 
+  def self.add_tags!
+    configuration.tags.each do |tag_name, tag|
+      YAML.add_tag("!#{tag_name}", tag[:klass])
+    end
+  end
+  private_class_method :add_tags!
+
   def self.configure
     yield configuration if block_given?
+  ensure
+    add_tags!
   end
 
   class BaseTag
@@ -343,18 +356,37 @@ module Nero
     end
 
     add_default_tags!
+    add_tags!
   end
   reset_configuration!
 
-  def self.yaml_options
+  def self.default_yaml_options
     {
       permitted_classes: [Symbol] + configuration.tags.values.map { _1[:klass] },
       aliases: true
     }
   end
+  private_class_method :default_yaml_options
+
+  def self.yaml_options(yaml_options)
+    epc = yaml_options.delete(:extra_permitted_classes)
+    default_yaml_options.merge(yaml_options).tap do
+      _1[:permitted_classes].push(*epc)
+    end
+  end
   private_class_method :yaml_options
 
+  def self.load(yaml, root: nil, resolve: true, **yaml_options)
+    process_yaml(yaml_load(yaml, yaml_options(yaml_options)), root:, resolve:)
+  end
+
+  def self.load_file(file, root: nil, resolve: true, **yaml_options)
+    config_file = (file.is_a?(Pathname) ? file : Pathname.new(file)).expand_path
+    process_yaml(yaml_load_file(config_file, yaml_options(yaml_options)), root:, config_file:, resolve:)
+  end
+
   def self.load_config(file, root: nil, env: nil, resolve: true)
+    warn "[DEPRECATION] `load_config` is deprecated. Use `load_file` or `config_for` instead."
     root ||= env
     add_tags!
 
@@ -376,13 +408,6 @@ module Nero
     end
   end
   private_class_method :resolve_file
-
-  def self.load(raw, root: nil, env: nil, resolve: true)
-    root ||= env
-    add_tags!
-
-    process_yaml(yaml_load(raw, yaml_options), root:, resolve:)
-  end
 
   def self.process_yaml(yaml, root: nil, resolve: true, config_file: nil)
     config_file ||= (Pathname.pwd / __FILE__)
@@ -424,13 +449,6 @@ module Nero
     end
   end
   private_class_method :yaml_load
-
-  def self.add_tags!
-    configuration.tags.each do |tag_name, tag|
-      YAML.add_tag("!#{tag_name}", tag[:klass])
-    end
-  end
-  private_class_method :add_tags!
 
   def self.collect_tags(obj)
     case obj
