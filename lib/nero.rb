@@ -376,23 +376,58 @@ module Nero
   end
   private_class_method :yaml_options
 
+  # Like `YAML.load` with extra options.
+  #
+  # @param [Symbol, String] root return the value of this root key.
+  # @param [Boolean] resolve (for debug purposes) not resolving would leave the Nero-tags as-is.
+  # @param [Array<ClassName>] extra_permitted_classes classes that are added
+  #   to the default permitted_classes and passed to `YAML.load`.
+  # @param [Hash] yaml_options options passed to `YAML.load`.
+  # @return [Nero::Config (when the data is a Hash)]
+  # @example 
+  #   Nero.load(<<~YAML, extra_permitted_classes: [Time])
+  #     home: !env HOME,
+  #     created_at: 2010-02-11 11:02:57
+  #     project_root: !path/git_root
+  #   YAML
+  #   #=> {
+  #   #    home: "/Users/gert",
+  #   #    created_at: 2010-02-11 12:02:57 +0100,
+  #   #    project_root: #<Pathname:/Users/gert/projects/nero>
+  #   #  }
   def self.load(yaml, root: nil, resolve: true, **yaml_options)
     process_yaml(yaml_load(yaml, yaml_options(yaml_options)), root:, resolve:)
   end
 
+  # Like `YAML.load_file`. See {load} for options.
+  # @return [Nero::Config (when the YAML-data is a Hash)]
   def self.load_file(file, root: nil, resolve: true, **yaml_options)
     config_file = (file.is_a?(Pathname) ? file : Pathname.new(file)).expand_path
     process_yaml(yaml_load_file(config_file, yaml_options(yaml_options)), root:, config_file:, resolve:)
   end
 
+  # Convenience wrapper for {load_file} that works like `Rails.application.config_for`.  
+  # @see https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for Rails' config_for documentation
+  #
+  # The file-argument is expanded like so `(configuration.config_dir / "#{file}.yml").expand_path`.  
+  #
+  # @param [Symbol, String, Pathname] file `Symbol` or `String` are expanded as shown above. A `Pathname` is used as-is.
+  # @param [Symbol, String] env return the value of this root key.
+  # @param [Symbol, String] root return the value of this root key.
+  # @param [Boolean] resolve (for debug purposes) not resolving would leave the Nero-tags as-is.
+  # @param [Array<ClassName>] extra_permitted_classes classes that are added
+  #   to the default permitted_classes and passed to `YAML.load`.
+  # @param [Hash] yaml_options options passed to `YAML.load_file`.
+  # @return [Nero::Config (when the data is a Hash)]
+  # @example
+  #   Nero.config_for(:app, env: Rails.env) #=> {}
   def self.config_for(file, root: nil, env: nil, **yaml_options)
     root ||= env
 
-    config_file = (file.is_a?(Pathname) ? file : configuration.config_dir / "#{file}.yml").expand_path
-
-    load_file(config_file, root:, **yaml_options)
+    load_file(resolve_file(file), root:, **yaml_options)
   end
 
+  # @deprecated Use `load_file` or `config_for` instead.
   def self.load_config(file, root: nil, env: nil, resolve: true)
     warn "[DEPRECATION] `load_config` is deprecated. Use `load_file` or `config_for` instead."
     root ||= env
@@ -410,9 +445,8 @@ module Nero
   def self.resolve_file(file)
     case file
     when Pathname then file
-    # TODO expand full path
     else
-      configuration.config_dir / "#{file}.yml"
+      (configuration.config_dir / "#{file}.yml").expand_path
     end
   end
   private_class_method :resolve_file

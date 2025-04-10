@@ -43,6 +43,12 @@ RSpec.describe Nero do
   end
 
   describe "#load" do
+    it "accepts options for YAML" do
+      expect(Nero.load(<<~YAML, permitted_classes: [Time])).to be
+        created_at: 2010-02-11 11:02:57
+      YAML
+    end
+
     it "accepts additional permitted_classes" do
       expect(Nero.load(<<~YAML, extra_permitted_classes: [Time])).to be
         created_at: 2010-02-11 11:02:57
