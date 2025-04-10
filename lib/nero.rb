@@ -128,16 +128,72 @@ module Nero
     add_tags!
   end
 
+  # Superclass for all tags.
+  #
+  # Writing your own tag-class would look something like this:
+  #
+  # Wanted usage in YAML:
+  # ```ruby
+  # Nero.load(<<~YAML)
+  #   secret: !rot/12 "some message"
+  #   other_secret: !rot/13 [ !env [SECRET, some message] ]
+  # YAML
+  # ```
+  #
+  # Required config:
+  # ```ruby
+  # config.add_tag("rot/12", klass: RotTag[n: 12])
+  # config.add_tag("rot/13", klass: RotTag[n: 13]) do |secret|
+  #   "#{secret} (try breaking this!)"
+  # end
+  # ```
+  # The class then would look like this:
+  # ```ruby
+  # class RotTag < Nero::BaseTag
+  #   attr_reader :n
+  #
+  #   # Overriding this method...:
+  #   # - restricts options
+  #   #   ie `RotTag[x: 1]` would raise.
+  #   # - sets default values
+  #   # - makes options available via getters
+  #   #   (otherwise available via `options[:n]`).
+  #   def init_options(n: 10)
+  #     super
+  #     @n = n
+  #   end
+  #
+  #   # This is where the magic happens.
+  #   # (Accepting any keyword arguments keeps the method fw-compatible).
+  #   def resolve(**)
+  #     # `args` are the resolved arguments (Array or Hash).
+  #     # `config` the config of the tag (containing e.g. the proc).
+  #     block = config.fetch(:block, :itself.to_proc)
+  #     args.join.tr(chars.join, chars.rotate(n).join).then(&block)
+  #   end
+  #
+  #   # Just some helper method with all characters that can be rotated.
+  #   def chars
+  #     %w(a b c) # etc
+  #   end
+  # end
+  # ```
+  #
   class BaseTag
     include Resolvable
 
     attr_reader :coder, :options, :ctx
 
+    # Convenience method simplifying {Nero::Configuration#add_tag}:
+    #
+    # ```ruby
+    #   config.add_tag("foo", klass: SomeTag[some_option: 1])
+    # ```
     def self.[](**options)
       [self, options]
     end
 
-    # used by YAML
+    # @private used by YAML
     def init_with(coder)
       @coder = coder
     end
@@ -192,23 +248,28 @@ module Nero
   # When tag-name ends with "?", the env-var is optional.
   #
   # Given config:
+  # ```ruby
   # config.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
   # config.add_tag("env/upcase?", klass: Nero::EnvTag[coerce: :upcase])
-
-  # Then YAML => result:
-  # "--- env/upcase [MSG, Hello World]" => "HELLO WORLD"
-  # "--- env/upcase MSG" => raises when not ENV.has_key? "MSG"
-  # "--- env/upcase? MSG" => nil
+  # ```
   #
-  # Args supported:
-  # - scalar
+  # Then YAML => result:
+  # ```ruby
+  # "--- env/upcase [MSG, Hello World]" #=> "HELLO WORLD"
+  # "--- env/upcase MSG" #=> raises when not ENV.has_key? "MSG"
+  # "--- env/upcase? MSG" #=> nil
+  # ```
+  #
+  # YAML-args supported:
+  # - scalar —
   #  name of env-var, e.g. `!env HOME`
-  # - seq
+  # - seq —
   #  name of env-var and fallback, e.g. `!env [HOME, /root]`
-
+  #
   # Options:
-  # - coerce - symbol or proc to be applied to value of env-var.
-  #   when using coerce, the block is ignoerd.
+  # - `coerce` —
+  #  symbol or proc to be applied to value of env-var.
+  #  when using coerce, the block is ignored.
   #
   class EnvTag < BaseTag
     def resolve(**)

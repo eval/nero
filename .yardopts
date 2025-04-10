@@ -2,4 +2,5 @@
 --title 'Nero Documentation'
 --charset utf-8
 --markup markdown
+--no-private
 'lib/**/*.rb' - '*.md'
