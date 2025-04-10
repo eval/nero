@@ -2,6 +2,7 @@
 
 require "zeitwerk"
 loader = Zeitwerk::Loader.for_gem
+loader.do_not_eager_load("#{__dir__}/nero/railtie.rb")
 loader.setup
 
 require "uri"
@@ -420,7 +421,7 @@ module Nero
   # @param [Hash] yaml_options options passed to `YAML.load_file`.
   # @return [Nero::Config (when the data is a Hash)]
   # @example
-  #   Nero.config_for(:app, env: Rails.env) #=> {}
+  #   Nero.config_for(:app, env: Rails.env) #=> {...}
   def self.config_for(file, root: nil, env: nil, **yaml_options)
     root ||= env
 
@@ -515,6 +516,6 @@ module Nero
   private_class_method :collect_tags
 end
 
-loader.eager_load if ENV.key?("CI")
-
 require "nero/railtie" if defined?(Rails::Railtie)
+
+loader.eager_load if ENV.key?("CI")
