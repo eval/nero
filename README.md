@@ -253,7 +253,7 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
       end
     end
     ```
-    Blocks are passed instances of [Nero::BaseTag](https://rubydoc.info/github/eval/nero/main/Nero/BaseTag).
+    Blocks are passed instances of [Nero::BaseTag](https://eval.github.io/nero/Nero/BaseTag.html).
 1. **re-use existing tag-class**  
    You can add an existing tag under a better fitting name this way.  
    Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
