@@ -51,12 +51,13 @@ bundle add nero
 
 ```ruby
 Nero.configure do |nero|
-  nero.config_dir = Rails.root / "config"
-  # Now `Nero.load_file(:foo)` looks for `Rails.root / "config/foo.yml"`.
+  # Path that `Nero.config_for` uses to resolve Symbol or String files, e.g. `Nero.config_for(:app)`
+  nero.config_dir = "config"
 
-  # Add custom tags
+  # Add custom tags (also see section about custom tags)
   nero.add_tag("upcase") do |tag|
-    # tag is an instance of [Nero::BaseTag](https://rubydoc.info/github/eval/nero/main/Nero/BaseTag)
+    # tag is an instance of [Nero::BaseTag](https://eval.github.io/nero/Nero/BaseTag.html).
+    tag.args.join.upcase
   end
 end
 ```
@@ -87,7 +88,7 @@ Loading this config:
 
 ```ruby
 # Loading development
-Nero.load_config("config/settings", root: :development)
+Nero.load_file("config/settings", root: :development)
 # ...and no ENV-vars were provided
 #=> {secret: "dummy", debug?: false}
 
@@ -95,7 +96,7 @@ Nero.load_config("config/settings", root: :development)
 #=> {secret: "dummy", debug?: true}
 
 # Loading production
-Nero.load_config("config/settings", root: :production)
+Nero.load_file("config/settings", root: :production)
 # ...and no ENV-vars were provided
 # raises error: key not found: "SECRET" (KeyError)
 
@@ -103,14 +104,17 @@ Nero.load_config("config/settings", root: :production)
 #=> {secret: "s3cr3t", max_threads: 3}
 ```
 > [!TIP]  
-> The following configuration would make `Nero.load_config` a drop-in replacement for [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for):
+> You can also use `Nero.config_for` (similar to [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for)).  
+> In Rails applications this gets configured for you. For other application you might need to adjust the `config_dir`:
 ```ruby
 Nero.configure do |config|
-  config.config_dir = Rails.root / "config"
+  config.config_dir = "config"
 end
 
-Nero.load_config(:settings, env: Rails.env)
+Nero.config_for(:settings, env: Rails.env)
 ```
+
+[API Documentation](https://eval.github.io/nero/).
 
 ### built-in tags
 
@@ -213,9 +217,11 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
 
 ### custom tags
 
-Three ways to do this:
+There's three ways to create your own tags.
 
-1. a block
+For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https://eval.github.io/nero/Nero/BaseTag.html).
+
+1. **a proc**
     ```ruby
     Nero.configure do |nero|
       nero.add_tag("upcase") do |tag|
@@ -248,7 +254,7 @@ Three ways to do this:
     end
     ```
     Blocks are passed instances of [Nero::BaseTag](https://rubydoc.info/github/eval/nero/main/Nero/BaseTag).
-1. re-use existing tag-class  
+1. **re-use existing tag-class**  
    You can add an existing tag under a better fitting name this way.  
    Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
     ```ruby
@@ -259,7 +265,7 @@ Three ways to do this:
       nero.add_tag("path/project_root", klass: Nero::PathRootTag[containing: '.git'])
     end
     ```
-1. custom class  
+1. **custom class**  
    ```ruby
    class RotTag < Nero::BaseTag
      # Configure:
