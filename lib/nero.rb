@@ -16,7 +16,13 @@ module Nero
   class Error < StandardError; end
 
   module DigExt
-    # Like dig, but raises ArgumentError when path does not exist.
+    # ⛏️💥 Like `dig`, but raises `ArgumentError` when `path` does not exist.
+    # @example like dig
+    #   {a: {b: 2}}.dig!(:a, :b) #=> 2
+    #   {a: {b: 2}}.dig!(:a, :c) #=> ArgumentError, path not found [:a, :c] (ArgumentError)
+    # @raise [ArgumentError] when `path` does not exist.
+    # @overload dig!(*path)
+    #   @param path nested keys into config
     def dig!(k0, *k)
       k.unshift(k0)
 
