@@ -1,6 +1,29 @@
 ## [Unreleased]
 ...
 
+## [0.6.0] - 2025-04-10
+
+### deprecations
+
+- `Nero.load_config` - use `Nero.load_file` or `Nero.config_for`.
+
+### other
+
+- API docs live at https://eval.github.io/nero/
+- Config for Rails  
+  The `config.config_dir` is automatically setup, so `Nero.config_for` (formerly `Nero.load_config`) just works.
+- `Nero::Config.dig!` ⛏️💥  
+  Any (Hash-)result from `Nero.load/load_file/config_for` is now an instance of `Nero::Config`.  
+  This class contains `dig!`, a fail-hard variant of `dig`:
+  ```ruby
+  Nero.load(<<~Y).dig!(:smtp_settings, :hose) # 💥 typo
+    smtp_settings:
+      host: 127.0.0.1
+      port: 1025
+  Y
+  #=> 'Nero::DigExt#dig!': path not found [:smtp_settings, :hose] (ArgumentError)
+  ```
+
 ## [0.5.0] - 2025-03-20
 
 - tag-classes  
