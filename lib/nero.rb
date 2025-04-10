@@ -385,7 +385,7 @@ module Nero
   #   to the default permitted_classes and passed to `YAML.load`.
   # @param [Hash] yaml_options options passed to `YAML.load`.
   # @return [Nero::Config (when the data is a Hash)]
-  # @example 
+  # @example
   #   Nero.load(<<~YAML, extra_permitted_classes: [Time])
   #     home: !env HOME,
   #     created_at: 2010-02-11 11:02:57
@@ -407,10 +407,10 @@ module Nero
     process_yaml(yaml_load_file(config_file, yaml_options(yaml_options)), root:, config_file:, resolve:)
   end
 
-  # Convenience wrapper for {load_file} that works like `Rails.application.config_for`.  
+  # Convenience wrapper for {load_file} that works like `Rails.application.config_for`.
   # @see https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for Rails' config_for documentation
   #
-  # The file-argument is expanded like so `(configuration.config_dir / "#{file}.yml").expand_path`.  
+  # The file-argument is expanded like so `(configuration.config_dir / "#{file}.yml").expand_path`.
   #
   # @param [Symbol, String, Pathname] file `Symbol` or `String` are expanded as shown above. A `Pathname` is used as-is.
   # @param [Symbol, String] env return the value of this root key.
