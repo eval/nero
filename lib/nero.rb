@@ -482,3 +482,5 @@ module Nero
 end
 
 loader.eager_load if ENV.key?("CI")
+
+require "nero/railtie" if defined?(Rails::Railtie)
