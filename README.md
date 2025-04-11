@@ -71,7 +71,7 @@ end
 
 Given the following config:
 ```yaml
-# config/settings.yml
+# config/app.yml
 development:
   # env-var with a fallback
   secret: !env [SECRET, "dummy"]
@@ -88,7 +88,7 @@ Loading this config:
 
 ```ruby
 # Loading development
-Nero.load_file("config/settings", root: :development)
+Nero.load_file("config/app.yml", root: :development)
 # ...and no ENV-vars were provided
 #=> {secret: "dummy", debug?: false}
 
@@ -96,7 +96,7 @@ Nero.load_file("config/settings", root: :development)
 #=> {secret: "dummy", debug?: true}
 
 # Loading production
-Nero.load_file("config/settings", root: :production)
+Nero.load_file("config/app.yml", root: :production)
 # ...and no ENV-vars were provided
 # raises error: key not found: "SECRET" (KeyError)
 
@@ -104,7 +104,7 @@ Nero.load_file("config/settings", root: :production)
 #=> {secret: "s3cr3t", max_threads: 3}
 ```
 > [!TIP]  
-> You can also use `Nero.config_for` (similar to [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for)).  
+> You can also use `Nero.config_for(:app)` (similar to [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for)).  
 > In Rails applications this gets configured for you. For other application you might need to adjust the `config_dir`:
 ```ruby
 Nero.configure do |config|
@@ -207,7 +207,7 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
     - !ref[base, url]
 
   # refs are resolved within the tree of the selected root.
-  # The following config won't work when doing `Nero.load_config(:app, root: :prod)`
+  # The following config won't work when doing `Nero.load_file("config/app.yml", root: :prod)`
   dev:
     max_threads: 5
   prod:
