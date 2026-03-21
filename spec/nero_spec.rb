@@ -262,6 +262,28 @@ RSpec.describe Nero do
       }.to raise_error(Nero::ParseError, /missing SECRET/)
     end
 
+    it "supports lambda tags with a mapping argument" do
+      yaml = <<~Y
+        val: !headers
+          content_type: application/json
+          accept: text/plain
+      Y
+      expect(Nero.parse(yaml, env: {}) { |c|
+        c.add_tag("headers", ->(args, **) { args.transform_keys(&:upcase) })
+      }).to eq("val" => {"CONTENT_TYPE" => "application/json", "ACCEPT" => "text/plain"})
+    end
+
+    it "supports mapping tags with refs" do
+      yaml = <<~Y
+        type: application/json
+        val: !headers
+          content_type: !ref type
+      Y
+      expect(Nero.parse(yaml, env: {}) { |c|
+        c.add_tag("headers", ->(args, **) { args.transform_keys(&:upcase) })
+      }).to eq("type" => "application/json", "val" => {"CONTENT_TYPE" => "application/json"})
+    end
+
     it "custom tag can report errors via context" do
       error_tag = Class.new(Nero::BaseTag) do
         def resolve(args, context:)
