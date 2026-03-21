@@ -1,559 +1,326 @@
 # frozen_string_literal: true
 
 require "tempfile"
-require "yaml"
 
 RSpec.describe Nero do
-  after(:each) { delete_config_file! }
-  after(:each) { described_class.reset_configuration! }
+  let(:parser) { Nero::Parser.new(env: {}) }
 
-  def delete_config_file!
-    @config_file&.tap do
-      _1.close
-      File.unlink(_1.path)
+  describe ".parse" do
+    it "returns value directly like Psych" do
+      expect(Nero.parse("foo: bar\nnum: 42")).to eq("foo" => "bar", "num" => 42)
+    end
+
+    it "raises ParseError on missing env" do
+      expect { Nero.parse("db: !env DATABASE_URL", env: {}) }
+        .to raise_error(Nero::ParseError, /DATABASE_URL/)
+    end
+
+    it "exposes individual errors on ParseError" do
+      err = nil
+      begin
+        Nero.parse("a: !env A\nb: !env B", env: {})
+      rescue Nero::ParseError => e
+        err = e
+      end
+      expect(err.errors.size).to eq(2)
     end
   end
 
-  def set_ENV(env = {})
-    stub_const("ENV", env)
-  end
+  describe "Result" do
+    it "value! returns value when ok" do
+      result = parser.parse("foo: bar")
+      expect(result.value!).to eq("foo" => "bar")
+    end
 
-  def load_file(file = config_file, **kw)
-    described_class.load_file(file, **kw)
-  end
-
-  def given_config(s)
-    @config_file = Tempfile.create(%w[config .yaml]).tap do |f|
-      f.write s
-      f.rewind
+    it "value! raises ParseError when not ok" do
+      result = parser.parse("db: !env MISSING")
+      expect { result.value! }.to raise_error(Nero::ParseError, /MISSING/)
     end
   end
 
-  def nero_config(...) = described_class.configure(...)
-
-  def config_file
-    Pathname.new(@config_file.path)
-  end
-
-  def with_file_present(f, &block)
-    file = FileUtils.touch(f).first
-    yield file
-  ensure
-    FileUtils.rm(file)
-  end
-
-  describe "#load" do
-    it "accepts options for YAML" do
-      expect(Nero.load(<<~YAML, permitted_classes: [Time])).to be
-        created_at: 2010-02-11 11:02:57
-      YAML
+  describe "!env" do
+    it "resolves from a scalar" do
+      expect(Nero.parse("db: !env DATABASE_URL", env: {"DATABASE_URL" => "postgres://localhost/mydb"}))
+        .to eq("db" => "postgres://localhost/mydb")
     end
 
-    it "accepts additional permitted_classes" do
-      expect(Nero.load(<<~YAML, extra_permitted_classes: [Time])).to be
-        created_at: 2010-02-11 11:02:57
-      YAML
-    end
-  end
-
-  describe "default tags" do
-    describe "env-tag" do
-      it "uses the env-var" do
-        given_config(<<~YAML)
-          ---
-          host: !env HOST
-        YAML
-
-        set_ENV("HOST" => "example.org")
-
-        expect(load_file).to eq({host: "example.org"})
-      end
-
-      context "env-var absent" do
-        specify do
-          given_config(<<~YAML)
-            ---
-            host: !env HOST
-          YAML
-
-          expect {
-            load_file
-          }.to raise_error(/key not found: "HOST"/)
-        end
-
-        it "allows for a fallback" do
-          given_config(<<~YAML)
-            ---
-            host: !env
-              - HOST
-              - fallback.org
-          YAML
-
-          expect(load_file).to eq({host: "fallback.org"})
-        end
-      end
+    it "resolves with a default from a sequence" do
+      expect(Nero.parse("db: !env [DATABASE_URL, sqlite3:memory]", env: {}))
+        .to eq("db" => "sqlite3:memory")
     end
 
-    describe "env?-tag" do
-      it "uses the env-var" do
-        given_config(<<~YAML)
-          ---
-          host: !env? HOST
-        YAML
-
-        set_ENV("HOST" => "example.org")
-
-        expect(load_file).to eq({host: "example.org"})
-      end
-
-      context "env-var absent" do
-        it "returns nil" do
-          given_config(<<~YAML)
-            ---
-            host: !env? HOST
-          YAML
-
-          expect(load_file).to eq({host: nil})
-        end
-      end
+    it "collects an error when env var is missing and no default" do
+      result = parser.parse("db: !env DATABASE_URL")
+      expect(result).not_to be_ok
+      expect(result.errors.first.message).to match(/DATABASE_URL/)
     end
 
-    describe "env/integer-tag" do
-      specify "with scalar-only" do
-        given_config(<<~YAML)
-          ---
-          port: !env/integer PORT
-        YAML
-
-        set_ENV("PORT" => "1234")
-
-        expect(load_file).to eq({port: 1234})
-      end
-
-      specify do
-        given_config(<<~YAML)
-          ---
-          port: !env/integer PORT
-        YAML
-
-        expect {
-          load_file
-        }.to raise_error(/key not found: "PORT"/)
-      end
-
-      specify "with fallback value and env-var" do
-        given_config(<<~YAML)
-          ---
-          port: !env/integer
-            - PORT
-            - 4321
-        YAML
-
-        set_ENV("PORT" => "1234")
-
-        expect(load_file).to eq({port: 1234})
-      end
-
-      specify "with fallback value and absent env-var" do
-        given_config(<<~YAML)
-          ---
-          port: !env/integer
-            - PORT
-            - 4321
-        YAML
-
-        expect(load_file).to eq({port: 4321})
-      end
+    it "resolves !env/int with coercion" do
+      expect(Nero.parse("port: !env/int [PORT, 3000]", env: {})).to eq("port" => 3000)
     end
 
-    describe "env/integer-tag?" do
-      it "uses the env-var" do
-        given_config(<<~YAML)
-          ---
-          port: !env/integer? PORT
-        YAML
-
-        set_ENV("PORT" => "1234")
-
-        expect(load_file).to eq({port: 1234})
-      end
-
-      context "env-var absent" do
-        it "returns nil" do
-          given_config(<<~YAML)
-            ---
-            port: !env/integer? PORT
-          YAML
-
-          expect(load_file).to eq({port: nil})
-        end
-      end
+    it "resolves !env/int from actual env" do
+      expect(Nero.parse("port: !env/int [PORT, 3000]", env: {"PORT" => "8080"})).to eq("port" => 8080)
     end
 
-    # env/bool? DEBUG
-    # returns false when not set
-    describe "env/bool-tag" do
-      specify "scalar" do
-        given_config(<<~YAML)
-          ---
-          debug: !env/bool DEBUG
-        YAML
-
-        set_ENV("DEBUG" => "Y")
-
-        expect(load_file).to eq({debug: true})
-      end
-
-      specify do
-        given_config(<<~YAML)
-          ---
-          debug: !env/bool DEBUG
-        YAML
-
-        expect {
-          load_file
-        }.to raise_error(/key not found: "DEBUG"/)
-      end
-
-      it "raises when unknown value" do
-        given_config(<<~YAML)
-          ---
-          debug: !env/bool DEBUG
-        YAML
-
-        set_ENV("DEBUG" => "Ok")
-
-        expect {
-          load_file
-        }.to raise_error(%r{should be one of y\(es\)/n\(o\), on/off, true/false})
-      end
-
-      specify "with fallback value and env-var" do
-        given_config(<<~YAML)
-          ---
-          debug: !env/bool
-            - DEBUG
-            - false
-        YAML
-
-        expect(load_file).to eq({debug: false})
-      end
+    it "collects error on bad coercion" do
+      result = parser.parse("port: !env/int [PORT, notanumber]")
+      expect(result).not_to be_ok
+      expect(result.errors.first.message).to match(/coerce/)
     end
 
-    describe "env/bool?-tag" do
-      it "returns false when not present" do
-        given_config(<<~YAML)
-          ---
-          debug: !env/bool? DEBUG
-        YAML
-
-        expect(load_file).to eq({debug: false})
-      end
+    it "resolves !env/boolean" do
+      expect(Nero.parse("debug: !env/boolean [DEBUG, false]", env: {})).to eq("debug" => false)
     end
 
-    describe "path-tag" do
-      specify "with scalar-only" do
-        given_config(<<~YAML)
-          ---
-          path: !path foo
-        YAML
-
-        expect(load_file).to eq({path: Pathname.new("foo")})
-      end
-
-      specify "with seq" do
-        given_config(<<~YAML)
-          ---
-          path: !path
-            - foo
-            - bar
-        YAML
-
-        expect(load_file).to eq({path: Pathname.new("foo/bar")})
-      end
-
-      specify "containing tags" do
-        given_config(<<~YAML)
-          ---
-          bin_path: !path
-            - !env HOME
-            - bin
-        YAML
-
-        set_ENV("HOME" => "/home/gert")
-
-        expect(load_file).to \
-          eq({bin_path: Pathname.new("/home/gert/bin")})
-      end
+    it "resolves !env/path as a Pathname" do
+      result = Nero.parse("home: !env/path HOME", env: {"HOME" => "/Users/gert"})
+      expect(result["home"]).to eq(Pathname.new("/Users/gert"))
+      expect(result["home"]).to be_a(Pathname)
     end
 
-    describe "str/format-tag" do
-      it "formats given the provided " do
-        given_config(<<~YAML)
-          ---
-          ticket: !str/format
-            - '%.6d'
-            - 1200
-        YAML
-
-        expect(load_file).to eq({ticket: "001200"})
-      end
-
-      it "accepts a map" do
-        given_config(<<~YAML)
-          ---
-          url: !str/format
-            fmt: 'https://%<host>s/foo'
-            host: !env HOST
-        YAML
-        set_ENV("HOST" => "example.org")
-
-        expect(load_file).to eq({url: "https://example.org/foo"})
-      end
+    it "!env? returns nil without error when missing" do
+      expect(Nero.parse("val: !env? MISSING", env: {})).to eq("val" => nil)
     end
 
-    describe "uri-tag" do
-      it "constructs a URI from a seq" do
-        given_config(<<~YAML)
-          ---
-          some_url: !uri
-            - https://
-            - !env SOME_HOST
-            - /some/path
-        YAML
-
-        set_ENV("SOME_HOST" => "example.org")
-
-        expect(load_file).to \
-          eq({some_url: URI("https://example.org/some/path")})
-      end
+    it "!env? returns the value when present" do
+      expect(Nero.parse("val: !env? PRESENT", env: {"PRESENT" => "here"})).to eq("val" => "here")
     end
 
-    describe "ref-tag" do
-      it "includes value of referenced node" do
-        given_config(<<~YAML)
-          ---
-          base:
-            url: https://foo.org
-          bar_url: !str/format
-            - '%s/to/bar'
-            - !ref [base, url]
-        YAML
-
-        expect(load_file).to \
-          include({bar_url: "https://foo.org/to/bar"})
-      end
-
-      xit "raises when ref is invalid, ie empty, not all strings"
-      xit "raises when path is invalid"
-
-      it "can point to leafs that need resolving" do
-        given_config(<<~YAML)
-          ---
-          base:
-            host: !env HOST
-            url: !str/format
-              - 'https://%s'
-              - !ref [base, host]
-          bar_url: !str/format
-            - '%s/to/bar'
-            - !ref [base, url]
-        YAML
-        set_ENV("HOST" => "foo.org")
-
-        expect(load_file).to \
-          include({bar_url: "https://foo.org/to/bar"})
-      end
-
-      specify "refs are relative to root" do
-        given_config(<<~YAML)
-          ---
-          root:
-            base_url: !env BASE_URL
-            bar_url: !str/format
-              - '%s/to/bar'
-              - !ref [base_url]
-        YAML
-        set_ENV("BASE_URL" => "https://foo.org")
-
-        expect(load_file(config_file, root: :root)).to \
-          include({bar_url: "https://foo.org/to/bar"})
-      end
+    it "!env/int? returns nil without error when missing" do
+      expect(Nero.parse("port: !env/int? PORT", env: {})).to eq("port" => nil)
     end
 
-    describe "path/root-tags" do
-      it "returns a path based on the containing-option" do
-        nero_config do |cfg|
-          cfg.add_tag("path/project_root", klass: Nero::PathRootTag[containing: ".project"])
-        end
-        given_config(<<~YAML)
-          ---
-          config_folder: !path/project_root [ config ]
-          project_root: !path/project_root
-        YAML
-
-        with_file_present(config_file.parent / ".project") do
-          expect(load_file(config_file)).to include(config_folder: a_kind_of(Pathname))
-        end
-      end
-
-      it "raises when root-path cannot be found" do
-        nero_config do |cfg|
-          cfg.add_tag("path/project_root", klass: Nero::PathRootTag[containing: ".never_there"])
-        end
-        given_config(<<~YAML)
-          ---
-          folder: !path/project_root [lib]
-        YAML
-
-        expect {
-          load_file(config_file).to include(folder: a_kind_of(Pathname))
-        }.to raise_error(/path\/project_root: failed to find root-path/)
-      end
+    it "!env/bool? returns nil without error when missing" do
+      expect(Nero.parse("debug: !env/bool? DEBUG", env: {})).to eq("debug" => nil)
     end
   end
 
-  describe "providing a root" do
-    it "returns the root via a symbol" do
-      given_config(<<~YAML)
-        ---
-        foo: 1
-        bar: 2
-      YAML
-
-      expect(load_file(config_file, root: :foo)).to eq 1
+  describe "root:" do
+    it "selects a top-level key with a symbol" do
+      yaml = "development:\n  port: 3000\nproduction:\n  port: 9000"
+      expect(Nero.parse(yaml, root: :development)).to eq("port" => 3000)
     end
 
-    it "returns the root provided a string (ie Rails.env)" do
-      given_config(<<~YAML)
-        ---
-        foo: 1
-        bar: 2
-      YAML
-
-      expect(load_file(config_file, root: "bar")).to eq 2
+    it "selects a top-level key with a string" do
+      yaml = "development:\n  port: 3000\nproduction:\n  port: 9000"
+      expect(Nero.parse(yaml, root: "production")).to eq("port" => 9000)
     end
 
-    xit "allows for providing root as :env like config_for" do
-      given_config(<<~YAML)
-        ---
-        foo: 1
-        bar: 2
-      YAML
-
-      expect(load_file(config_file, env: "bar")).to eq 2
+    it "only resolves tags in the selected root" do
+      yaml = "development:\n  db: !env [DB, sqlite]\nproduction:\n  secret: !env SECRET"
+      expect(Nero.parse(yaml, root: :development, env: {})).to eq("db" => "sqlite")
     end
 
-    it "allows for aliases" do
-      given_config(<<~YAML)
-        ---
-        default: &default
+    it "supports YAML aliases and merge keys" do
+      yaml = <<~Y
+        defaults: &defaults
+          host: localhost
+          port: 3000
+        development:
+          <<: *defaults
+          debug: true
+        production:
+          <<: *defaults
+          debug: false
+      Y
+      expect(Nero.parse(yaml, root: :development)).to eq("host" => "localhost", "port" => 3000, "debug" => true)
+      expect(Nero.parse(yaml, root: :production)).to eq("host" => "localhost", "port" => 3000, "debug" => false)
+    end
+
+    it "raises when root key not found" do
+      yaml = "development:\n  port: 3000"
+      expect { Nero.parse(yaml, root: :staging) }.to raise_error(Nero::ParseError, /staging/)
+    end
+  end
+
+  describe "!ref" do
+    it "uses ref-ed value" do
+      expect(Nero.parse(<<~Y, env: {})["domain"]).to eq("http://localhost:3000")
+        host: localhost
+        port: 3000
+        domain: !format [ "http://%<host>s:%<port>s", host: !ref host, port: !ref port ]
+      Y
+    end
+
+    it "can ref forward" do
+      expect(Nero.parse(<<~Y, env: {})["domain"]).to eq("http://localhost:3000")
+        domain: !format [ "http://%<host>s:%<port>s", host: !ref host, port: !ref port ]
+        host: localhost
+        port: 3000
+      Y
+    end
+
+    it "can ref refs" do
+      expect(Nero.parse(<<~Y, env: {})["root_url"]).to eq("http://localhost:3000")
+        host: localhost
+        port: 3000
+        host_port: !format [ "%<host>s:%<port>s", host: !ref host, port: !ref port ]
+        root_url: !format [ "http://%<host_port>s", host_port: !ref host_port ]
+      Y
+    end
+
+    it "can ref nested data" do
+      expect(Nero.parse(<<~Y, env: {})["root_url"]).to eq("http://localhost:3000")
+        basics:
+          host_port: localhost:3000
+        root_url: !format [ "http://%<host_port>s", host_port: !ref basics.host_port ]
+      Y
+    end
+
+    it "resolves relative to root" do
+      expect(Nero.parse(<<~Y, env: {}, root: :development)["b"]).to eq(1)
+        a: 2
+        development:
           a: 1
-        dev:
-          <<: *default
-          b: 2
-        prod:
-          b: 3
-      YAML
-
-      expect(load_file(config_file, root: :dev)).to \
-        eq({a: 1, b: 2})
+          b: !ref a
+      Y
     end
 
-    it "won't trip over missing env-vars outside root" do
-      given_config(<<~YAML)
-        ---
-        foo: !env FOO
-        bar: !env BAR
-      YAML
+    it "errs on unknown refs" do
+      result = parser.parse(<<~Y)
+        a: !ref b
+      Y
+      expect(result.errors.first.message).to match(/unknown ref b/)
+    end
 
-      set_ENV("FOO" => "something")
-
-      expect {
-        load_file(config_file, root: :foo)
-      }.to_not raise_error
+    it "detects circular refs" do
+      result = parser.parse(<<~Y)
+        a: !ref b
+        b: !ref a
+      Y
+      expect(result).not_to be_ok
+      expect(result.errors.first.message).to match(/circular/)
     end
   end
 
-  describe "adding a custom tag" do
-    specify "is added to the nero-config" do
-      nero_config do |cfg|
-        cfg.add_tag("inc") do |tag|
-          Integer(*tag.args).next
+  describe "!format" do
+    it "formats with named parameters" do
+      yaml = 'greeting: !format ["Hello, %<what>s!", what: World]'
+      expect(Nero.parse(yaml, env: {})).to eq("greeting" => "Hello, World!")
+    end
+
+    it "formats with multiple named parameters" do
+      yaml = 'url: !format ["https://%<host>s:%<port>d/api", host: localhost, port: 3000]'
+      expect(Nero.parse(yaml, env: {})).to eq("url" => "https://localhost:3000/api")
+    end
+
+    it "collects error on missing key" do
+      yaml = 'bad: !format ["Hello, %<name>s!"]'
+      result = parser.parse(yaml)
+      expect(result).not_to be_ok
+      expect(result.errors.first.message).to match(/format error/)
+    end
+  end
+
+  describe "custom tags" do
+    let(:rot_tag_class) do
+      Class.new(Nero::BaseTag) do
+        def initialize(n:)
+          @n = n
+        end
+
+        def resolve(args, context:)
+          args[0].tr("a-zA-Z",
+            [*"a".."z"].rotate(@n).join + [*"A".."Z"].rotate(@n).join)
         end
       end
-      given_config(<<~YAML)
-        ---
-        port: !inc 1
-      YAML
-
-      expect(load_file(config_file)).to eq({port: 2})
     end
-  end
 
-  describe "skip check on env-var presence" do
-    it "skips check using a special nero env-var" do
-      given_config(<<~YAML)
-        ---
-        port:   !env/integer PORT
-        debug:  !env/bool DEBUG
-        secret: !env SECRET
-      YAML
-      set_ENV("NERO_ENV_ALL_OPTIONAL" => "true")
+    it "resolves a custom !rot/13 tag" do
+      expect(Nero.parse("secret: !rot/13 uryyb", env: {}) { |c| c.add_tag("rot/13", rot_tag_class.new(n: 13)) })
+        .to eq("secret" => "hello")
+    end
+
+    it "resolves a custom !rot/12 tag with sequence args" do
+      expect(Nero.parse("msg: !rot/12 [vszzc]", env: {}) { |c| c.add_tag("rot/12", rot_tag_class.new(n: 12)) })
+        .to eq("msg" => "hello")
+    end
+
+    it "supports multiple tags in the same namespace" do
+      result = Nero.parse("a: !rot/12 vszzc\nb: !rot/13 uryyb", env: {}) do |config|
+        config.add_tag("rot/12", rot_tag_class.new(n: 12))
+        config.add_tag("rot/13", rot_tag_class.new(n: 13))
+      end
+      expect(result).to eq("a" => "hello", "b" => "hello")
+    end
+
+    it "supports lambda tags" do
+      expect(Nero.parse("val: !upcase hello", env: {}) { |c|
+        c.add_tag("upcase", ->(args, **) { args[0].upcase })
+      }).to eq("val" => "HELLO")
+    end
+
+    it "lambda tags can use context" do
+      expect {
+        Nero.parse("val: !need SECRET", env: {}) { |c|
+          c.add_tag("need", ->(args, context:) {
+            context.add_error("missing #{args[0]}")
+            nil
+          })
+        }
+      }.to raise_error(Nero::ParseError, /missing SECRET/)
+    end
+
+    it "custom tag can report errors via context" do
+      error_tag = Class.new(Nero::BaseTag) do
+        def resolve(args, context:)
+          context.add_error("something went wrong with #{args[0]}")
+          nil
+        end
+      end.new
 
       expect {
-        load_file(config_file)
-      }.to_not raise_error
+        Nero.parse("val: !boom kaboom", env: {}) { |c| c.add_tag("boom", error_tag) }
+      }.to raise_error(Nero::ParseError, /kaboom/)
     end
   end
 
-  # TODO accepts pathname and uses that
-  # TODO shows fullpath as error when not exist
+  describe "parse_file" do
+    it "anchors path resolution to the file's directory" do
+      require "tmpdir"
+      Dir.mktmpdir do |tmp|
+        root = File.realpath(tmp)
+        conf_dir = File.join(root, "config")
+        FileUtils.mkdir_p(conf_dir)
+        FileUtils.mkdir(File.join(root, ".git"))
+        FileUtils.mkdir_p(File.join(root, "db"))
+        File.write(File.join(root, "db", "schema.rb"), "")
+        File.write(File.join(conf_dir, "app.yml"), "schema: !path/git_root db/schema.rb")
 
-  #   Nero.configure do
-  #     add_resolver("env") do |coder|
-  #       ENV.fetch(@coder.scalar)
-  #     end
-  #   end
-  #
-  #   Nero.load_file(:settings)
-  #
-
-  # TODO it throws when seeing an unknown tag
-end
-
-RSpec.describe Nero::Config do
-  def cfg_for(...)
-    described_class.for(...)
-  end
-
-  describe "::for" do
-    it "instantiates from a Hash" do
-      expect(cfg_for({a: 1})).to be_a(described_class)
+        result = Nero.parse_file(File.join(conf_dir, "app.yml"), env: {}) do |config|
+          config.add_tag("path/git_root", Nero::RootPathTag.new(containing: ".git"))
+        end
+        expect(result).to eq("schema" => Pathname.new(File.join(root, "db/schema.rb")))
+      end
     end
 
-    it "returns a Nero::Config as is" do
-      cfg = cfg_for(a: 1)
+    it "returns just the root when no relative path given" do
+      require "tmpdir"
+      Dir.mktmpdir do |tmp|
+        root = File.realpath(tmp)
+        FileUtils.mkdir(File.join(root, ".git"))
+        File.write(File.join(root, "app.yml"), 'root: !path/git_root ""')
 
-      expect(cfg_for(cfg)).to equal(cfg)
+        result = Nero.parse_file(File.join(root, "app.yml"), env: {}) do |config|
+          config.add_tag("path/git_root", Nero::RootPathTag.new(containing: ".git"))
+        end
+        expect(result).to eq("root" => Pathname.new(root))
+      end
     end
 
-    it "returns whatever else is passed to it" do
-      expect(cfg_for(1)).to eq 1
-    end
-  end
+    it "collects error when containing target is not found" do
+      require "tmpdir"
+      Dir.mktmpdir do |tmp|
+        root = File.realpath(tmp)
+        File.write(File.join(root, "app.yml"), 'root: !path/nope ""')
 
-  describe "#dig!" do
-    it "works like #dig for known paths" do
-      expect(cfg_for(a: {b: 2}).dig!(:a)).to eq({b: 2})
-      expect(cfg_for(a: {b: 2}).dig!(:a, :b)).to eq 2
-      expect(cfg_for(a: [{b: 2}]).dig!(:a, 0, :b)).to eq 2
-    end
-
-    it "fails for unknown paths" do
-      expect {
-        cfg_for(a: {b: 2}).dig!(:c)
-      }.to raise_error(ArgumentError, /path not found/)
+        expect {
+          Nero.parse_file(File.join(root, "app.yml"), env: {}) do |config|
+            config.add_tag("path/nope", Nero::RootPathTag.new(containing: ".nonexistent"))
+          end
+        }.to raise_error(Nero::ParseError, /\.nonexistent/)
+      end
     end
   end
 end
