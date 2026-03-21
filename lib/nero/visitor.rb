@@ -26,6 +26,15 @@ module Nero
       contains_ref?(args) ? Deferred.new(handler, args) : handler.resolve(args, context: @nero_ctx)
     end
 
+    def visit_Psych_Nodes_Mapping(o)
+      handler = find_nero_tag(o.tag)
+      return super unless handler
+
+      o.tag = nil
+      args = super
+      contains_ref?(args) ? Deferred.new(handler, args) : handler.resolve(args, context: @nero_ctx)
+    end
+
     private
 
     def find_nero_tag(tag)

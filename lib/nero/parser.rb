@@ -25,6 +25,7 @@ module Nero
       add_tag("env/float?", EnvTag.new(coerce: TO_FLOAT, optional: true))
       add_tag("env/path", EnvTag.new(coerce: TO_PATH))
       add_tag("env/path?", EnvTag.new(coerce: TO_PATH, optional: true))
+      add_tag("str/format", FormatTag.new)
       add_tag("format", FormatTag.new)
       add_tag("ref", RefTag.new)
       block&.call(self)
