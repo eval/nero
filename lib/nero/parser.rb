@@ -7,8 +7,8 @@ module Nero
     TO_BOOL = ->(v) { !%w[0 false no off].include?(v.downcase) }
     TO_PATH = ->(v) { Pathname.new(v) }
 
-    def initialize(env: ENV, root: nil, &block)
-      @env = env
+    def initialize(environ: ENV, root: nil, &block)
+      @environ = environ
       @root = root&.to_s
       @tags = {}
       add_tag("env", EnvTag.new)
@@ -38,7 +38,7 @@ module Nero
     def parse(yaml, dir: nil)
       errors = []
       tree = ::Psych.parse_stream(yaml)
-      ctx = Context.new(env: @env, errors: errors, dir: dir)
+      ctx = Context.new(environ: @environ, errors: errors, dir: dir)
 
       if @root
         mark_inactive_roots(tree)
@@ -72,14 +72,29 @@ module Nero
       mapping = doc&.root
       return unless mapping.is_a?(::Psych::Nodes::Mapping)
 
+      root_node = mapping.children.each_slice(2).find { |k, _| k.value == @root }&.last
+      used_anchors = root_node ? collect_aliases(root_node) : Set.new
+
       mapping.children.each_slice(2) do |key_node, val_node|
-        strip_custom_tags(val_node) unless key_node.value == @root
+        next if key_node.value == @root
+        next if used_anchors.include?(val_node.anchor)
+
+        strip_custom_tags(val_node)
       end
+    end
+
+    def collect_aliases(node, result = Set.new)
+      if node.is_a?(::Psych::Nodes::Alias)
+        result << node.anchor
+      elsif node.respond_to?(:children) && node.children
+        node.children.each { |child| collect_aliases(child, result) }
+      end
+      result
     end
 
     def strip_custom_tags(node)
       case node
-      when ::Psych::Nodes::Scalar, ::Psych::Nodes::Sequence
+      when ::Psych::Nodes::Scalar, ::Psych::Nodes::Sequence, ::Psych::Nodes::Mapping
         node.tag = nil if node.tag&.start_with?("!")
       end
       return unless node.respond_to?(:children) && node.children

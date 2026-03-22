@@ -3,7 +3,7 @@
 require "tempfile"
 
 RSpec.describe Nero do
-  let(:parser) { Nero::Parser.new(env: {}) }
+  let(:parser) { Nero::Parser.new(environ: {}) }
 
   describe ".parse" do
     it "returns value directly like Psych" do
@@ -11,14 +11,14 @@ RSpec.describe Nero do
     end
 
     it "raises ParseError on missing env" do
-      expect { Nero.parse("db: !env DATABASE_URL", env: {}) }
+      expect { Nero.parse("db: !env DATABASE_URL", environ: {}) }
         .to raise_error(Nero::ParseError, /DATABASE_URL/)
     end
 
     it "exposes individual errors on ParseError" do
       err = nil
       begin
-        Nero.parse("a: !env A\nb: !env B", env: {})
+        Nero.parse("a: !env A\nb: !env B", environ: {})
       rescue Nero::ParseError => e
         err = e
       end
@@ -40,12 +40,12 @@ RSpec.describe Nero do
 
   describe "!env" do
     it "resolves from a scalar" do
-      expect(Nero.parse("db: !env DATABASE_URL", env: {"DATABASE_URL" => "postgres://localhost/mydb"}))
+      expect(Nero.parse("db: !env DATABASE_URL", environ: {"DATABASE_URL" => "postgres://localhost/mydb"}))
         .to eq("db" => "postgres://localhost/mydb")
     end
 
     it "resolves with a default from a sequence" do
-      expect(Nero.parse("db: !env [DATABASE_URL, sqlite3:memory]", env: {}))
+      expect(Nero.parse("db: !env [DATABASE_URL, sqlite3:memory]", environ: {}))
         .to eq("db" => "sqlite3:memory")
     end
 
@@ -56,11 +56,11 @@ RSpec.describe Nero do
     end
 
     it "resolves !env/int with coercion" do
-      expect(Nero.parse("port: !env/int [PORT, 3000]", env: {})).to eq("port" => 3000)
+      expect(Nero.parse("port: !env/int [PORT, 3000]", environ: {})).to eq("port" => 3000)
     end
 
     it "resolves !env/int from actual env" do
-      expect(Nero.parse("port: !env/int [PORT, 3000]", env: {"PORT" => "8080"})).to eq("port" => 8080)
+      expect(Nero.parse("port: !env/int [PORT, 3000]", environ: {"PORT" => "8080"})).to eq("port" => 8080)
     end
 
     it "collects error on bad coercion" do
@@ -70,29 +70,29 @@ RSpec.describe Nero do
     end
 
     it "resolves !env/boolean" do
-      expect(Nero.parse("debug: !env/boolean [DEBUG, false]", env: {})).to eq("debug" => false)
+      expect(Nero.parse("debug: !env/boolean [DEBUG, false]", environ: {})).to eq("debug" => false)
     end
 
     it "resolves !env/path as a Pathname" do
-      result = Nero.parse("home: !env/path HOME", env: {"HOME" => "/Users/gert"})
+      result = Nero.parse("home: !env/path HOME", environ: {"HOME" => "/Users/gert"})
       expect(result["home"]).to eq(Pathname.new("/Users/gert"))
       expect(result["home"]).to be_a(Pathname)
     end
 
     it "!env? returns nil without error when missing" do
-      expect(Nero.parse("val: !env? MISSING", env: {})).to eq("val" => nil)
+      expect(Nero.parse("val: !env? MISSING", environ: {})).to eq("val" => nil)
     end
 
     it "!env? returns the value when present" do
-      expect(Nero.parse("val: !env? PRESENT", env: {"PRESENT" => "here"})).to eq("val" => "here")
+      expect(Nero.parse("val: !env? PRESENT", environ: {"PRESENT" => "here"})).to eq("val" => "here")
     end
 
     it "!env/int? returns nil without error when missing" do
-      expect(Nero.parse("port: !env/int? PORT", env: {})).to eq("port" => nil)
+      expect(Nero.parse("port: !env/int? PORT", environ: {})).to eq("port" => nil)
     end
 
     it "!env/bool? returns nil without error when missing" do
-      expect(Nero.parse("debug: !env/bool? DEBUG", env: {})).to eq("debug" => nil)
+      expect(Nero.parse("debug: !env/bool? DEBUG", environ: {})).to eq("debug" => nil)
     end
   end
 
@@ -109,7 +109,7 @@ RSpec.describe Nero do
 
     it "only resolves tags in the selected root" do
       yaml = "development:\n  db: !env [DB, sqlite]\nproduction:\n  secret: !env SECRET"
-      expect(Nero.parse(yaml, root: :development, env: {})).to eq("db" => "sqlite")
+      expect(Nero.parse(yaml, root: :development, environ: {})).to eq("db" => "sqlite")
     end
 
     it "supports YAML aliases and merge keys" do
@@ -128,6 +128,32 @@ RSpec.describe Nero do
       expect(Nero.parse(yaml, root: :production)).to eq("host" => "localhost", "port" => 3000, "debug" => false)
     end
 
+    it "resolves tags in anchored sections merged into the selected root" do
+      yaml = <<~Y
+        shared: &shared
+          greeting: !upcase hello
+        development:
+          <<: *shared
+          debug: true
+      Y
+      result = Nero.parse(yaml, root: :development, environ: {}) { |c|
+        c.add_tag("upcase", ->(args, **) { args[0].upcase })
+      }
+      expect(result).to eq("greeting" => "HELLO", "debug" => true)
+    end
+
+    it "strips tags from anchored sections not used by the selected root" do
+      yaml = <<~Y
+        hosted: &hosted
+          secret: !env SECRET
+        development:
+          debug: true
+        staging:
+          <<: *hosted
+      Y
+      expect(Nero.parse(yaml, root: :development, environ: {})).to eq("debug" => true)
+    end
+
     it "raises when root key not found" do
       yaml = "development:\n  port: 3000"
       expect { Nero.parse(yaml, root: :staging) }.to raise_error(Nero::ParseError, /staging/)
@@ -136,7 +162,7 @@ RSpec.describe Nero do
 
   describe "!ref" do
     it "uses ref-ed value" do
-      expect(Nero.parse(<<~Y, env: {})["domain"]).to eq("http://localhost:3000")
+      expect(Nero.parse(<<~Y, environ: {})["domain"]).to eq("http://localhost:3000")
         host: localhost
         port: 3000
         domain: !format [ "http://%<host>s:%<port>s", host: !ref host, port: !ref port ]
@@ -144,7 +170,7 @@ RSpec.describe Nero do
     end
 
     it "can ref forward" do
-      expect(Nero.parse(<<~Y, env: {})["domain"]).to eq("http://localhost:3000")
+      expect(Nero.parse(<<~Y, environ: {})["domain"]).to eq("http://localhost:3000")
         domain: !format [ "http://%<host>s:%<port>s", host: !ref host, port: !ref port ]
         host: localhost
         port: 3000
@@ -152,7 +178,7 @@ RSpec.describe Nero do
     end
 
     it "can ref refs" do
-      expect(Nero.parse(<<~Y, env: {})["root_url"]).to eq("http://localhost:3000")
+      expect(Nero.parse(<<~Y, environ: {})["root_url"]).to eq("http://localhost:3000")
         host: localhost
         port: 3000
         host_port: !format [ "%<host>s:%<port>s", host: !ref host, port: !ref port ]
@@ -161,7 +187,7 @@ RSpec.describe Nero do
     end
 
     it "can ref nested data" do
-      expect(Nero.parse(<<~Y, env: {})["root_url"]).to eq("http://localhost:3000")
+      expect(Nero.parse(<<~Y, environ: {})["root_url"]).to eq("http://localhost:3000")
         basics:
           host_port: localhost:3000
         root_url: !format [ "http://%<host_port>s", host_port: !ref basics.host_port ]
@@ -169,7 +195,7 @@ RSpec.describe Nero do
     end
 
     it "resolves relative to root" do
-      expect(Nero.parse(<<~Y, env: {}, root: :development)["b"]).to eq(1)
+      expect(Nero.parse(<<~Y, environ: {}, root: :development)["b"]).to eq(1)
         a: 2
         development:
           a: 1
@@ -197,12 +223,12 @@ RSpec.describe Nero do
   describe "!format" do
     it "formats with named parameters" do
       yaml = 'greeting: !format ["Hello, %<what>s!", what: World]'
-      expect(Nero.parse(yaml, env: {})).to eq("greeting" => "Hello, World!")
+      expect(Nero.parse(yaml, environ: {})).to eq("greeting" => "Hello, World!")
     end
 
     it "formats with multiple named parameters" do
       yaml = 'url: !format ["https://%<host>s:%<port>d/api", host: localhost, port: 3000]'
-      expect(Nero.parse(yaml, env: {})).to eq("url" => "https://localhost:3000/api")
+      expect(Nero.parse(yaml, environ: {})).to eq("url" => "https://localhost:3000/api")
     end
 
     it "collects error on missing key" do
@@ -228,17 +254,17 @@ RSpec.describe Nero do
     end
 
     it "resolves a custom !rot/13 tag" do
-      expect(Nero.parse("secret: !rot/13 uryyb", env: {}) { |c| c.add_tag("rot/13", rot_tag_class.new(n: 13)) })
+      expect(Nero.parse("secret: !rot/13 uryyb", environ: {}) { |c| c.add_tag("rot/13", rot_tag_class.new(n: 13)) })
         .to eq("secret" => "hello")
     end
 
     it "resolves a custom !rot/12 tag with sequence args" do
-      expect(Nero.parse("msg: !rot/12 [vszzc]", env: {}) { |c| c.add_tag("rot/12", rot_tag_class.new(n: 12)) })
+      expect(Nero.parse("msg: !rot/12 [vszzc]", environ: {}) { |c| c.add_tag("rot/12", rot_tag_class.new(n: 12)) })
         .to eq("msg" => "hello")
     end
 
     it "supports multiple tags in the same namespace" do
-      result = Nero.parse("a: !rot/12 vszzc\nb: !rot/13 uryyb", env: {}) do |config|
+      result = Nero.parse("a: !rot/12 vszzc\nb: !rot/13 uryyb") do |config|
         config.add_tag("rot/12", rot_tag_class.new(n: 12))
         config.add_tag("rot/13", rot_tag_class.new(n: 13))
       end
@@ -246,14 +272,14 @@ RSpec.describe Nero do
     end
 
     it "supports lambda tags" do
-      expect(Nero.parse("val: !upcase hello", env: {}) { |c|
+      expect(Nero.parse("val: !upcase hello", environ: {}) { |c|
         c.add_tag("upcase", ->(args, **) { args[0].upcase })
       }).to eq("val" => "HELLO")
     end
 
     it "lambda tags can use context" do
       expect {
-        Nero.parse("val: !need SECRET", env: {}) { |c|
+        Nero.parse("val: !need SECRET", environ: {}) { |c|
           c.add_tag("need", ->(args, context:) {
             context.add_error("missing #{args[0]}")
             nil
@@ -268,7 +294,7 @@ RSpec.describe Nero do
           content_type: application/json
           accept: text/plain
       Y
-      expect(Nero.parse(yaml, env: {}) { |c|
+      expect(Nero.parse(yaml, environ: {}) { |c|
         c.add_tag("headers", ->(args, **) { args.transform_keys(&:upcase) })
       }).to eq("val" => {"CONTENT_TYPE" => "application/json", "ACCEPT" => "text/plain"})
     end
@@ -279,7 +305,7 @@ RSpec.describe Nero do
         val: !headers
           content_type: !ref type
       Y
-      expect(Nero.parse(yaml, env: {}) { |c|
+      expect(Nero.parse(yaml, environ: {}) { |c|
         c.add_tag("headers", ->(args, **) { args.transform_keys(&:upcase) })
       }).to eq("type" => "application/json", "val" => {"CONTENT_TYPE" => "application/json"})
     end
@@ -293,7 +319,7 @@ RSpec.describe Nero do
       end.new
 
       expect {
-        Nero.parse("val: !boom kaboom", env: {}) { |c| c.add_tag("boom", error_tag) }
+        Nero.parse("val: !boom kaboom", environ: {}) { |c| c.add_tag("boom", error_tag) }
       }.to raise_error(Nero::ParseError, /kaboom/)
     end
   end
@@ -310,7 +336,7 @@ RSpec.describe Nero do
         File.write(File.join(root, "db", "schema.rb"), "")
         File.write(File.join(conf_dir, "app.yml"), "schema: !path/git_root db/schema.rb")
 
-        result = Nero.parse_file(File.join(conf_dir, "app.yml"), env: {}) do |config|
+        result = Nero.parse_file(File.join(conf_dir, "app.yml")) do |config|
           config.add_tag("path/git_root", Nero::RootPathTag.new(containing: ".git"))
         end
         expect(result).to eq("schema" => Pathname.new(File.join(root, "db/schema.rb")))
@@ -324,7 +350,7 @@ RSpec.describe Nero do
         FileUtils.mkdir(File.join(root, ".git"))
         File.write(File.join(root, "app.yml"), 'root: !path/git_root ""')
 
-        result = Nero.parse_file(File.join(root, "app.yml"), env: {}) do |config|
+        result = Nero.parse_file(File.join(root, "app.yml")) do |config|
           config.add_tag("path/git_root", Nero::RootPathTag.new(containing: ".git"))
         end
         expect(result).to eq("root" => Pathname.new(root))
@@ -338,7 +364,7 @@ RSpec.describe Nero do
         File.write(File.join(root, "app.yml"), 'root: !path/nope ""')
 
         expect {
-          Nero.parse_file(File.join(root, "app.yml"), env: {}) do |config|
+          Nero.parse_file(File.join(root, "app.yml")) do |config|
             config.add_tag("path/nope", Nero::RootPathTag.new(containing: ".nonexistent"))
           end
         }.to raise_error(Nero::ParseError, /\.nonexistent/)

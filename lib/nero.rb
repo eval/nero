@@ -20,28 +20,22 @@ require_relative "nero/visitor"
 require_relative "nero/parser"
 
 module Nero
-  class << self
-    attr_writer :config_dir
-
-    def config_dir
-      @config_dir ||= Pathname.new("config").expand_path
-    end
-  end
-
   def self.parse(yaml, **opts, &block)
     Parser.new(**opts, &block).parse(yaml).value!
   end
 
-  def self.parse_file(path, **opts, &block)
-    Parser.new(**opts, &block).parse_file(path).value!
+  def self.parse_file(path, env: nil, root: nil, &block)
+    root ||= env&.to_s
+    Parser.new(root: root, &block).parse_file(path).value!
   end
 
-  def self.config_for(file, **opts, &block)
+  def self.config_for(file, env: nil, root: nil, &block)
+    root ||= env&.to_s
     path = case file
     when Pathname then file
-    else Pathname.new(config_dir) / "#{file}.yml"
+    else Pathname.new("config") / "#{file}.yml"
     end
-    parse_file(path.expand_path, **opts, &block)
+    parse_file(path.expand_path, root: root, &block)
   end
 end
 
