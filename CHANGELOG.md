@@ -1,5 +1,36 @@
 ## [Unreleased]
-...
+
+Total refactor and so some breaking changes:
+* no more global state for config  
+```ruby
+Nero.parse(some_yaml) do |config|
+  config.add_tag("str/upcase", ...)
+end
+```
+
+## Breaking Changes
+
+  - Nero.load / Nero.load_file removed — replaced by Nero.parse and Nero.parse_file. These return values directly (or raise Nero::ParseError).
+  - Nero.configure / Nero.configuration removed — custom tags are now registered via a block passed to parse/parse_file/config_for:
+```ruby
+  # Before
+  Nero.configure { |c| c.add_tag("rot/13", klass: RotTag[n: 13]) }
+  Nero.load("secret: !rot/13 uryyb")
+
+  # After
+  Nero.parse("secret: !rot/13 uryyb") { |c| c.add_tag("rot/13", RotTag.new(n: 13)) }
+```
+  - `Nero::Config` removed — results are plain Hashes (string keys) instead of a Config subclass with DigExt/dig!.
+  - `Nero::BaseTag` API changed — tags now implement resolve(args, context:) instead of accessing coder/ctx. Tag options are passed via initialize instead of init_options.
+  - !ref syntax changed — from sequence-based !ref [base, url] to dot-notation !ref base.url.
+  - root: option replaces root:/env: and uses string keys (e.g. root: :development matches the string key "development").
+  - Keys are strings — previously keys were symbolized; now they stay as strings.
+  - !uri and !path tags removed — !uri is gone entirely; !path is no longer a built-in.
+  - `Nero::PathRootTag` renamed to `Nero::RootPathTag` with a new constructor API.
+  - !str/format changed — now also available as !format; the map form (fmt: key) is replaced by a sequence with named-parameter hashes: !format ["http://%<host>s", host: !ref host].
+  - load_config removed (was already deprecated).
+  - Nero::Util removed — deep_symbolize_keys and deep_transform_values are no longer needed.
+  - NERO_ENV_ALL_OPTIONAL env var no longer supported.
 
 ## [0.6.0] - 2025-04-10
 
