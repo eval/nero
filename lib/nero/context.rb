@@ -2,10 +2,10 @@
 
 module Nero
   class Context
-    attr_reader :errors, :env, :dir
+    attr_reader :errors, :environ, :dir
 
-    def initialize(env:, errors:, dir: nil)
-      @env = env
+    def initialize(environ:, errors:, dir: nil)
+      @environ = environ
       @errors = errors
       @dir = dir || File.realpath(".")
     end

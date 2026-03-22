@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
+require_relative "rails"
+
 module Nero
   # @private
   class Railtie < ::Rails::Railtie
-    config.before_configuration do
-      Nero.config_dir = Rails.application.paths["config"].existent.first
-    end
   end
 end

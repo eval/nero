@@ -10,7 +10,7 @@ module Nero
     def resolve(args, context:)
       var_name = args[0]
       default = args[1]
-      raw = context.env[var_name]
+      raw = context.environ[var_name]
 
       if raw.nil? && default.nil?
         context.add_error("environment variable #{var_name} is not set") unless @optional
