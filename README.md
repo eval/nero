@@ -37,7 +37,7 @@ production:
 * 💎 declarative YAML-tags for e.g. requiring and coercing env-vars
 * 🛠️ add custom tags
 * 🛤️ `Rails.application.config_for` drop-in
-* ♻️ Zeitwerk-only dependency
+* ♻️ no dependencies
 
 ## Installation
 
@@ -50,16 +50,11 @@ bundle add nero
 ## Configuration
 
 ```ruby
-Nero.configure do |nero|
-  # Path that `Nero.config_for` uses to resolve Symbol or String files, e.g. `Nero.config_for(:app)`
-  nero.config_dir = "config"
-
-  # Add custom tags (also see section about custom tags)
-  nero.add_tag("upcase") do |tag|
-    # tag is an instance of [Nero::BaseTag](https://eval.github.io/nero/Nero/BaseTag.html).
-    tag.args.join.upcase
-  end
+parser = Nero::Parser.new do |config|
+  config.add_tag("str/upcase", ->(args, **) { args.join.upcase })
 end
+parser.parse("hello: !str/upcase world")
+# => #<Nero::Result:0x00000001239f8de0 @errors=[], @value={"hello" => "WORLD"}>
 ```
 
 ## Usage
@@ -88,7 +83,7 @@ Loading this config:
 
 ```ruby
 # Loading development
-Nero.load_file("config/app.yml", root: :development)
+Nero.parse_file("config/app.yml", root: :development)
 # ...and no ENV-vars were provided
 #=> {secret: "dummy", debug?: false}
 
@@ -96,7 +91,7 @@ Nero.load_file("config/app.yml", root: :development)
 #=> {secret: "dummy", debug?: true}
 
 # Loading production
-Nero.load_file("config/app.yml", root: :production)
+Nero.parse_file("config/app.yml", root: :production)
 # ...and no ENV-vars were provided
 # raises error: key not found: "SECRET" (KeyError)
 
@@ -107,10 +102,6 @@ Nero.load_file("config/app.yml", root: :production)
 > You can also use `Nero.config_for(:app)` (similar to [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for)).  
 > In Rails applications this gets configured for you. For other application you might need to adjust the `config_dir`:
 ```ruby
-Nero.configure do |config|
-  config.config_dir = "config"
-end
-
 Nero.config_for(:settings, env: Rails.env)
 ```
 
@@ -187,9 +178,9 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
   
   # pass it a map (including a key 'fmt') to use references
   smtp_url: !str/format
-    fmt: smtps://%<user>s:%<pass>s@smtp.gmail.com
-    user: !env SMTP_USER
-    pass: !env SMTP_PASS
+    - smtps://%<user>s:%<pass>s@smtp.gmail.com
+    - user: !env SMTP_USER
+      pass: !env SMTP_PASS
   ```
 - `!ref`  
   Include values from elsewhere:
@@ -224,8 +215,7 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
 1. **a proc**
     ```ruby
     Nero.configure do |nero|
-      nero.add_tag("upcase") do |tag|
-        # `tag` is a `Nero::BaseTag`.
+      nero.add_tag("upcase") do |args, context:|
         # In YAML args are provided as scalar, seq or map:
         # ---
         # k: !upcase bar
@@ -237,12 +227,11 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
         # k: !upcase
         #   bar: baz
         #
-        # Find these args via `tag.args` (Array or Hash):
-        case tag.args
+        case args
         when Hash
-          tag.args.each_with_object({}) {|(k,v), acc| acc[k] = v.upcase }
+          args.each_with_object({}) {|(k,v), acc| acc[k] = v.upcase }
         else
-          tag.args.map(&:upcase)
+          args.map(&:upcase)
         end
 
         # NOTE though a tag might just need one argument (ie scalar),
@@ -259,10 +248,8 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
    Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
     ```ruby
     Nero.configure do |nero|
-      nero.add_tag("env/upcase", klass: Nero::EnvTag[coerce: :upcase])
-
       # Alias for path/git_root:
-      nero.add_tag("path/project_root", klass: Nero::PathRootTag[containing: '.git'])
+      nero.add_tag("path/project_root", Nero::RootPathTag.new(".git"))
     end
     ```
 1. **custom class**  
@@ -270,10 +257,8 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
    class RotTag < Nero::BaseTag
      # Configure:
      # ```
-     # config.add_tag("rot/12", klass: RotTag[n: 12])
-     # config.add_tag("rot/10", klass: RotTag[n: 10]) do |secret|
-     #   "#{secret} (try breaking this!)"
-     # end
+     # config.add_tag("rot/12", RotTag.new(12))
+     # config.add_tag("rot/10", RotTag.new(10))
      # ```
      #
      # Usage in YAML:
@@ -281,35 +266,52 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
      # secret: !rot/12 some message
      # very_secret: !rot/10 [ !env [ MSG, some message ] ]
      # ```
-     # => {secret: "EAyq yqEEmsq", very_secret: "Cywo woCCkqo (try breaking this!)"}
-   
-     # By overriding `init_options` we can restrict/require options,
-     # provide default values and do any other setup.  
-     # By default an option is available via `options[:foo]`.
-     def init_options(n: 10)
-       super # no specific assignments, so available via `options[:n]`.
-     end
+     # => {secret: "EAyq yqEEmsq", very_secret: "Cywo woCCkqo)"}
 
      def chars
        @chars ||= (('a'..'z').to_a + ('A'..'Z').to_a + ('0'..'9').to_a)
      end
 
-     def resolve(**) # currently no keywords are passed, but `**` allows for future ones.
+     def resolve(args, context:)
        # Here we actually do the work: get the args, rotate strings and delegate to the block.
        # `args` are the resolved nested args (so e.g. `!env MSG` is already resolved).
-       # `config` is the tag's config, and contains e.g. the block.
-       block = config.fetch(:block, :itself.to_proc)
        # String#tr replaces any character from the first collection with the same position in the other:
-       args.join.tr(chars.join, chars.rotate(options[:n]).join).then(&block)
+       args.join.tr(chars.join, chars.rotate(@n).join)
      end
    end
    ```
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+```bash
+# Setup
+bin/setup  # Make sure it exits with code 0
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+# Run tests
+rake
+```
+
+Using [mise](https://mise.jdx.dev/) for env-vars is recommended.
+
+### Releasing
+
+1. Update `lib/bonchi/version.rb`
+   ```
+   bin/rake 'gem:write_version[0.5.0]'
+   # commit&push
+   # check CI
+   ```
+1. Tag
+   ```
+   gem_push=no bin/rake release
+   ```
+1. Release workflow from GitHub Actions...
+   - ...publishes to RubyGems (with Sigstore attestation)
+   - ...creates git GitHub release after successful publish
+1. Update `version.rb` for next dev-cycle
+   ```
+   bin/rake 'gem:write_version[0.6.0.dev]'
+   ```
 
 ## Contributing
 
