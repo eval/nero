@@ -1,12 +1,6 @@
 ## [Unreleased]
 
-Total refactor and so some breaking changes:
-* no more global state for config  
-```ruby
-Nero.parse(some_yaml) do |config|
-  config.add_tag("str/upcase", ...)
-end
-```
+Total refactor and so quite some breaking changes.
 
 ## Breaking Changes
 
