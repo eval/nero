@@ -45,7 +45,7 @@ jobs:
       - name: Get version
         id: version
         run: |
-          version=$(ruby -r ./lib/nero/version -e 'puts Bonchi::VERSION')
+          version=$(ruby -r ./lib/nero/version -e 'puts Nero::VERSION')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       # Release
@@ -57,7 +57,7 @@ jobs:
           version="${{ steps.version.outputs.version }}"
           version_anchor="${version//./}"
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ## 🌳 Bonchi ${version}
+          ## 🔥 Nero ${version}
 
           - **RubyGems**: https://rubygems.org/gems/nero/versions/${version}
           - **Changelog**: https://github.com/eval/nero/blob/main/CHANGELOG.md#${version_anchor}
