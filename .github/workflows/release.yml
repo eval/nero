@@ -1,38 +1,93 @@
----
+name: Release gem
+
 on:
   push:
     tags:
       - '*'
 
-name: Release Gem
+permissions:
+  contents: read
+
 jobs:
   push:
+    if: github.repository == 'eval/nero'
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
       id-token: write
+      attestations: write
+
     steps:
-    - uses: rubygems/configure-rubygems-credentials@main
-      with:
-        role-to-assume: rg_oidc_akr_qdpnqssh74zr5e48j9d7
-    - uses: actions/checkout@v4
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        bundler-cache: true
-        ruby-version: ruby
-    - name: Release
-      run: |
-        # Writing version.rb changes the Gemfile.lock which
-        # halts subsequent rake tasks when in frozen mode
-        bundle config set frozen false
-        bin/rake gem:build[${{ github.ref_name }}] gem:release
-    - name: Wait for release to propagate
-      run: |
-        gem install rubygems-await
-        gem_tuple="$(ruby -rbundler/setup -rbundler -e '
-            spec = Bundler.definition.specs.find {|s| s.name == ARGV[0] }
-            raise "No spec for #{ARGV[0]}" unless spec
-            print [spec.name, spec.version, spec.platform].join(":")
-          ' "nero")"
-        gem await "${gem_tuple}"
+      # Set up
+      - name: Harden Runner
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            fulcio.sigstore.dev:443
+            github.com:443
+            index.rubygems.org:443
+            rekor.sigstore.dev:443
+            release-assets.githubusercontent.com:443
+            rubygems.org:443
+            tuf-repo-cdn.sigstore.dev:443
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@2e007403fc1ec238429ecaa57af6f22f019cc135 # v1.234.0
+        with:
+          bundler-cache: true
+          ruby-version: ruby
+
+      # Read version from version.rb
+      - name: Get version
+        id: version
+        run: |
+          version=$(ruby -r ./lib/nero/version -e 'puts Bonchi::VERSION')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Release
+      - uses: rubygems/release-gem@1c162a739e8b4cb21a676e97b087e8268d8fc40b # v1.1.2
+
+      # Job Summary
+      - name: Summary
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          version_anchor="${version//./}"
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## 🌳 Bonchi ${version}
+
+          - **RubyGems**: https://rubygems.org/gems/nero/versions/${version}
+          - **Changelog**: https://github.com/eval/nero/blob/main/CHANGELOG.md#${version_anchor}
+          - **Attestation**: \`gem fetch nero -v ${version} && gh attestation verify nero-${version}.gem --owner eval\`
+          EOF
+
+      # GH Attestations
+      - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: pkg/*.gem
+
+      # GH Release
+      - name: Create GitHub release
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          dot_count=$(echo "$version" | tr -cd '.' | wc -c)
+
+          read -r -d '' notes <<EOF || true
+          ## 🔥 Nero ${version}
+          Declarative YAML-tags
+
+          **Rubygems**: https://rubygems.org/gems/nero/versions/${version}
+          **Changelog**: https://github.com/eval/nero/blob/main/CHANGELOG.md#${version//./}
+          EOF
+
+          if [[ "$dot_count" -gt 2 ]]; then
+            gh release create "$version" --prerelease --generate-notes
+          else
+            gh release create "$version" --generate-notes --notes "$notes"
+          fi
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
