@@ -1,5 +1,14 @@
+Changes can be:
+
+* ✨ Features
+* ⚠️ Breaking
+* 🐛 Bug Fixes
+* 🛠️ Developer
+* 🛡️ Security
+
 ## [Unreleased]
-...
+
+- 🛡️ MFA required to publish this gem
 
 ## [0.6.0] - 2025-04-10
 
