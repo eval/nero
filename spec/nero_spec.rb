@@ -239,13 +239,19 @@ RSpec.describe Nero do
       expect(Nero.parse(<<~Y, environ: {})["domain"]).to eq("http://localhost:3000")
         host: localhost
         port: 3000
-        domain: !format [ "http://%<host>s:%<port>s", host: !ref host, port: !ref port ]
+        domain: !str/format
+          - http://%<host>s:%<port>s
+          - host: !ref host
+            port: !ref port
       Y
     end
 
     it "can ref forward" do
       expect(Nero.parse(<<~Y, environ: {})["domain"]).to eq("http://localhost:3000")
-        domain: !format [ "http://%<host>s:%<port>s", host: !ref host, port: !ref port ]
+        domain: !str/format
+          - http://%<host>s:%<port>s
+          - host: !ref host
+            port: !ref port
         host: localhost
         port: 3000
       Y
@@ -255,8 +261,8 @@ RSpec.describe Nero do
       expect(Nero.parse(<<~Y, environ: {})["root_url"]).to eq("http://localhost:3000")
         host: localhost
         port: 3000
-        host_port: !format [ "%<host>s:%<port>s", host: !ref host, port: !ref port ]
-        root_url: !format [ "http://%<host_port>s", host_port: !ref host_port ]
+        host_port: !format [ "%<host>s:%<port>s", {host: !ref host, port: !ref port}]
+        root_url: !format [ "http://%<host_port>s", {host_port: !ref host_port} ]
       Y
     end
 
@@ -320,22 +326,84 @@ RSpec.describe Nero do
   end
 
   describe "!format" do
-    it "formats with named parameters" do
-      yaml = 'greeting: !format ["Hello, %<what>s!", what: World]'
-      expect(Nero.parse(yaml, environ: {})).to eq("greeting" => "Hello, World!")
+    samples do |v|
+      yaml, environ = v
+      Nero.parse(yaml, environ: environ || {})["result"]
     end
 
-    it "formats with multiple named parameters" do
-      yaml = 'url: !format ["https://%<host>s:%<port>d/api", host: localhost, port: 3000]'
-      expect(Nero.parse(yaml, environ: {})).to eq("url" => "https://localhost:3000/api")
-    end
+    ## positional args
+    #
+    sample <<~Y, "Hello people on Earth!"
+      result: !str/format
+        - Hello %s on %s!
+        - people
+        - Earth
+    Y
 
-    it "collects error on missing key" do
-      yaml = 'bad: !format ["Hello, %<name>s!"]'
-      result = parser.parse(yaml)
-      expect(result).not_to be_ok
-      expect(result.errors.first.message).to match(/format error/)
-    end
+    # weird but not wrong
+    sample <<~Y, "Hello!"
+      result: !str/format
+        - Hello!
+    Y
+
+    sample <<~Y, Nero::ParseError, "format error: too few arguments"
+      result: !str/format
+        - Hello %s on %s!
+        - people
+    Y
+
+    # This does *not* complain about missing format arguments
+    sample <<~Y, Nero::ParseError, /environment variable PLANET is not set/
+      result: !str/format
+        - Hello %s on %s!
+        - people
+        - !env PLANET
+    Y
+
+    # attribute args
+    #
+    sample <<~Y, "Hello robots on Mars!"
+      result: !str/format
+        - Hello %<demonyms>s on %<planet>s!
+        - demonyms: robots
+          planet: Mars
+    Y
+
+    # args become [{demonyms: ...}, {planet: ...}]
+    sample <<~Y, "Hello robots on Mars!"
+      result: !str/format [Hello %<demonyms>s on %<planet>s!, demonyms: robots, planet: Mars]
+    Y
+
+    sample <<~Y, Nero::ParseError, "format error: key<planet> not found"
+      result: !str/format
+        - Hello %<demonyms>s on %<planet>s!
+        - demonyms: robots
+    Y
+
+    sample [<<~Y, {"WHO" => "robots"}], "Hello robots on Mars!"
+      result: !str/format
+        - Hello %<demonyms>s on %<planet>s!
+        - demonyms: !env WHO
+          planet: Mars
+    Y
+
+    # This does *not* complain about missing format arguments
+    sample <<~Y, Nero::ParseError, /environment variable WHO is not set/
+      result: !str/format
+        - Hello %<demonyms>s on %<planet>s!
+        - demonyms: !env WHO
+          planet: Mars
+    Y
+
+    # gets the refs from anywhere
+    sample <<~Y, "Hello robots on Mars!"
+      where: Mars
+      result: !str/format
+        - Hello %<demonyms>s on %<planet>s!
+        - demonyms: !ref who
+          planet: !ref where
+      who: robots
+    Y
   end
 
   describe "custom tags" do

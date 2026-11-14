@@ -169,40 +169,43 @@ $ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
     - @smtp.gmail.com
   ```
 - `!str/format`  
-  Using Ruby's [format specifications](https://docs.ruby-lang.org/en/master/format_specifications_rdoc.html):
+  Using Ruby's [format specifications](https://docs.ruby-lang.org/en/master/language/format_specifications_rdoc.html):
   ```yaml
+  # template + positional arguments
   smtp_url: !str/format
     - smtps://%s:%s@smtp.gmail.com
     - !env SMTP_USER
     - !env SMTP_PASS
   
-  # pass it a map (including a key 'fmt') to use references
+  # template + hash argument
   smtp_url: !str/format
     - smtps://%<user>s:%<pass>s@smtp.gmail.com
     - user: !env SMTP_USER
       pass: !env SMTP_PASS
+  # as oneliner (the arguments are [tpl, {planet: ...}, {demonyms: ...}])
+  foo: !str/format [Hello %<demonyms>s on %<planet>s!, planet: Earth, demonyms: people]
   ```
 - `!ref`  
   Include values from elsewhere:
   ```yaml
   # simple
-  min_threads: !env/integer [MIN_THREADS, !ref [max_threads]]
+  min_threads: !env/integer [MIN_THREADS, !ref max_threads]
   max_threads: 5
   
   # oauth_callback -refs-> base.url -refs-> base.host
   base:
-    host: !env [HOST]
-    url: !str/format ['https://%s', !ref[base, host]]
+    host: !env HOST
+    url: !str/format [https://%s, !ref base.host]
   oauth_callback: !str/format
     - '%s/oauth/callback'
-    - !ref[base, url]
+    - !ref base.url
 
   # refs are resolved within the tree of the selected root.
   # The following config won't work when doing `Nero.load_file("config/app.yml", root: :prod)`
   dev:
     max_threads: 5
   prod:
-    max_threads: !env[MAX_THREADS, !ref[dev, max_threads]]
+    max_threads: !env [MAX_THREADS, !ref dev.max_threads]
   ```
   NOTE future version should raise properly over ref-ing a non-existing path.
 
