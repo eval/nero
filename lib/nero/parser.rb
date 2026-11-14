@@ -2,9 +2,18 @@
 
 module Nero
   class Parser
-    TO_INT = ->(v) { Integer(v) }
-    TO_FLOAT = ->(v) { Float(v) }
-    TO_BOOL = ->(v) { !%w[0 false no off].include?(v.downcase) }
+    TO_INT = ->(v) { Integer(v, 10) }
+    TO_FLOAT = ->(v) { Float(v) } # no base: Float() never reads "08" as octal
+
+    BOOL_YES = %w[1 y yes true on].freeze
+    BOOL_NO = %w[0 n no false off].freeze
+    TO_BOOL = ->(v) do
+      val = v.downcase.strip
+      return true if BOOL_YES.include?(val)
+      return false if BOOL_NO.include?(val)
+
+      raise ArgumentError, "Can't coerce #{v.inspect} to boolean. Acceptable values: #{(BOOL_YES + BOOL_NO).join("/")}"
+    end
     TO_PATH = ->(v) { Pathname.new(v) }
 
     def initialize(environ: ENV, root: nil, &block)

@@ -24,7 +24,7 @@ Total refactor and so quite some breaking changes.
 ```
   - `Nero::Config` removed — results are plain Hashes (string keys) instead of a Config subclass with DigExt/dig!.
   - `Nero::BaseTag` API changed — tags now implement resolve(args, context:) instead of accessing coder/ctx. Tag options are passed via initialize instead of init_options.
-  - !ref syntax changed — from sequence-based !ref [base, url] to dot-notation !ref base.url.
+  - !ref syntax changed — dot-notation `!ref base.url` is the preferred form. The sequence form `!ref [base, url]` still works but is deprecated (prints a warning) and will be removed in 0.8.
   - root: option replaces root:/env: and uses string keys (e.g. root: :development matches the string key "development").
   - Keys are strings — previously keys were symbolized; now they stay as strings.
   - !uri and !path tags removed — !uri is gone entirely; !path is no longer a built-in.
@@ -33,6 +33,26 @@ Total refactor and so quite some breaking changes.
   - load_config removed (was already deprecated).
   - Nero::Util removed — deep_symbolize_keys and deep_transform_values are no longer needed.
   - NERO_ENV_ALL_OPTIONAL env var no longer supported.
+  - Requires Ruby >= 3.3 (the oldest Ruby still receiving security fixes).
+  - `!env/bool` is strict: only `1/y/yes/true/on` (true) and `0/n/no/false/off` (false) are accepted, case-insensitive and ignoring surrounding whitespace. Anything else (including an empty value) is a parse error. Before, the check was not anchored, so any value containing e.g. a `y` (`maybe`, `anything`) was `true`.
+
+## Features
+
+  - Deprecation warnings: deprecated usage is reported as `[nero] DEPRECATION WARNING: ...` on stderr (via `Kernel#warn`, so `-W0` silences it). `Nero::Parser#parse` exposes them as `Result#warnings`.
+
+## Bug fixes
+
+  - `!env/integer` parses decimal only: `08` is `8` instead of an error (`Integer("08")` reads it as octal).
+  - `!env` (and the coercing variants) without a variable name is a parse error instead of looking up `nil`.
+  - `!ref [a, c]` resolved silently to `a` during the refactor; it resolves to `a.c` again.
+  - Rails: credentials are looked up when a `!credentials` tag resolves, so parsing works before (or without) a Rails application; a `false` credential is returned instead of reported missing; a block passed to `parse`/`config_for` runs once.
+
+## Developer
+
+  - Appraisal (psych 3/4 gemfiles) dropped; CI runs Ruby 3.3, 3.4, 4.0 and head.
+  - All GitHub Actions pinned to a commit SHA and updated.
+  - Specs: `sample` helper for table-driven specs (`spec/support/samples.rb`).
+  - `bin/console` has `reload!`.
 
 ## [0.6.0] - 2025-04-10
 
