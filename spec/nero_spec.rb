@@ -198,7 +198,15 @@ RSpec.describe Nero do
       expect(Nero.parse(<<~Y, environ: {})["b"]).to eq(3)
         a:
           c: 3
-        b: !ref [a, c]
+        b: !ref a.c
+      Y
+    end
+
+    it "emits deprecation warning when using the arrays" do
+      expect { Nero.parse(<<~Y) }.to output(/DEPRECATION WARNING: !ref \["a", "c"\] is deprecated/).to_stderr
+      a:
+        c: 3
+      b: !ref [a, c]
       Y
     end
 
@@ -206,7 +214,7 @@ RSpec.describe Nero do
       result = parser.parse(<<~Y)
         a:
           c: 3
-        b: !ref [a, x]
+        b: !ref a.x
       Y
       expect(result.errors.first.message).to match(/unknown ref a\.x/)
     end
