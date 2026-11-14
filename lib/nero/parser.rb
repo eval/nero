@@ -66,6 +66,7 @@ module Nero
       add_tag("str/format", FormatTag.new)
       add_tag("format", FormatTag.new)
       add_tag("ref", RefTag.new)
+      add_tag("path/git_root", RootPathTag.new(containing: ".git"))
       block&.call(self)
     end
 

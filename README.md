@@ -268,7 +268,7 @@ For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https
     ```ruby
     Nero.configure do |nero|
       # Alias for path/git_root:
-      nero.add_tag("path/project_root", Nero::RootPathTag.new(".git"))
+      nero.add_tag("path/project_root", Nero::RootPathTag.new(containing: ".git"))
     end
     ```
 1. **custom class**  
