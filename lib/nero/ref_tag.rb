@@ -6,7 +6,7 @@ module Nero
   class RefTag < BaseTag
     def resolve(args, context:)
       ref_path = args.flat_map { _1.to_s.split(".") }
-      context.add_warning "DEPRECATION WARNING: !ref [#{args.join(", ")}] is deprecated and will be removed in nero 0.8 (use !ref #{ref_path.join(".")})" if args.size > 1
+      context.deprecate "!ref [#{args.join(", ")}] is deprecated", use: "!ref #{ref_path.join(".")}", removed_in: "0.8" if args.size > 1
 
       Ref.new(ref_path)
     end

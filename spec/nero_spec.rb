@@ -24,6 +24,20 @@ RSpec.describe Nero do
       end
       expect(err.errors.size).to eq(2)
     end
+
+    context "deprecated tags" do
+      samples do |tag|
+        result = Nero::Parser.new(environ: {"FOO" => "1"}).parse("a: !#{tag} FOO")
+        result.warnings.first[/use (\S+)\)/, 1]
+      end
+
+      sample "env/integer?", "!env?/integer"
+      sample "env/int?", "!env?/int"
+      sample "env/bool?", "!env?/bool"
+      sample "env/boolean?", "!env?/boolean"
+      sample "env/float?", "!env?/float"
+      sample "env/path?", "!env?/path"
+    end
   end
 
   describe "Result" do

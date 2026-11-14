@@ -15,9 +15,12 @@ module Nero
       @errors << Error.new(message)
     end
 
-    # TODO have method deprecate("", use:, removed_in: "")
     def add_warning(message)
       @warnings << message
+    end
+
+    def deprecate(msg, use: nil, removed_in: "1.0")
+      add_warning "DEPRECATION WARNING: #{msg} and will be removed in #{removed_in} (use #{use})"
     end
   end
 end
