@@ -23,17 +23,29 @@ module Nero
       add_tag("env", EnvTag.new)
       add_tag("env?", EnvTag.new(optional: true))
       add_tag("env/int", EnvTag.new(coerce: TO_INT))
-      add_tag("env/int?", EnvTag.new(coerce: TO_INT, optional: true))
+      add_tag("env/int?", EnvTag.new(coerce: TO_INT, optional: true,
+        deprecated: ["!env/int? is deprecated", use: "!env?/int", removed_in: "0.8"]))
+      add_tag("env?/int", EnvTag.new(coerce: TO_INT, optional: true))
       add_tag("env/integer", EnvTag.new(coerce: TO_INT))
-      add_tag("env/integer?", EnvTag.new(coerce: TO_INT, optional: true))
+      add_tag("env/integer?", EnvTag.new(coerce: TO_INT, optional: true,
+        deprecated: ["!env/integer? is deprecated", use: "!env?/integer", removed_in: "0.8"]))
+      add_tag("env?/integer", EnvTag.new(coerce: TO_INT, optional: true))
       add_tag("env/bool", EnvTag.new(coerce: TO_BOOL))
-      add_tag("env/bool?", EnvTag.new(coerce: TO_BOOL, optional: true))
+      add_tag("env/bool?", EnvTag.new(coerce: TO_BOOL, optional: true,
+        deprecated: ["!env/bool? is deprecated", use: "!env?/bool", removed_in: "0.8"]))
+      add_tag("env?/bool", EnvTag.new(coerce: TO_BOOL, optional: true))
       add_tag("env/boolean", EnvTag.new(coerce: TO_BOOL))
-      add_tag("env/boolean?", EnvTag.new(coerce: TO_BOOL, optional: true))
+      add_tag("env/boolean?", EnvTag.new(coerce: TO_BOOL, optional: true,
+        deprecated: ["!env/boolean? is deprecated", use: "!env?/boolean", removed_in: "0.8"]))
+      add_tag("env?/boolean", EnvTag.new(coerce: TO_BOOL, optional: true))
       add_tag("env/float", EnvTag.new(coerce: TO_FLOAT))
-      add_tag("env/float?", EnvTag.new(coerce: TO_FLOAT, optional: true))
+      add_tag("env/float?", EnvTag.new(coerce: TO_FLOAT, optional: true,
+        deprecated: ["!env/float? is deprecated", use: "!env?/float", removed_in: "0.8"]))
+      add_tag("env?/float", EnvTag.new(coerce: TO_FLOAT, optional: true))
       add_tag("env/path", EnvTag.new(coerce: TO_PATH))
-      add_tag("env/path?", EnvTag.new(coerce: TO_PATH, optional: true))
+      add_tag("env/path?", EnvTag.new(coerce: TO_PATH, optional: true,
+        deprecated: ["!env/path? is deprecated", use: "!env?/path", removed_in: "0.8"]))
+      add_tag("env?/path", EnvTag.new(coerce: TO_PATH, optional: true))
       add_tag("str/format", FormatTag.new)
       add_tag("format", FormatTag.new)
       add_tag("ref", RefTag.new)

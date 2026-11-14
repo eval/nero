@@ -2,12 +2,18 @@
 
 module Nero
   class EnvTag < BaseTag
-    def initialize(coerce: nil, optional: false)
+    def initialize(coerce: nil, optional: false, deprecated: nil)
+      @deprecated = deprecated
       @coerce = coerce
       @optional = optional
     end
 
+    def deprecated? = !!@deprecated
+
     def resolve(args, context:)
+      if (msg, opts = @deprecated)
+        context.deprecate(msg, **opts)
+      end
       var_name = args[0]
       default = args[1]
 
