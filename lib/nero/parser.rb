@@ -16,9 +16,13 @@ module Nero
     end
     TO_PATH = ->(v) { Pathname.new(v) }
 
-    def initialize(environ: ENV, root: nil, &block)
+    # Classes YAML may instantiate, as YAML.load allows by default.
+    PERMITTED_CLASSES = %w[Symbol].freeze
+
+    def initialize(environ: ENV, root: nil, permitted_classes: PERMITTED_CLASSES, &block)
       @environ = environ
       @root = root&.to_s
+      @permitted_classes = permitted_classes
       @tags = {}
       add_tag("env", EnvTag.new)
       add_tag("env?", EnvTag.new(optional: true))
@@ -64,8 +68,13 @@ module Nero
         mark_inactive_roots(tree)
       end
 
-      visitor = Visitor.build(@tags, ctx)
-      result = visitor.accept(tree)
+      visitor = Visitor.build(@tags, ctx, permitted_classes: @permitted_classes)
+      begin
+        result = visitor.accept(tree)
+      rescue ::Psych::DisallowedClass => e
+        ctx.add_error("#{e.message} (allow it with permitted_classes:)")
+        return Result.new(nil, errors: ctx.errors.dup.freeze, warnings: ctx.warnings.dup.freeze)
+      end
       value = result.first
 
       if @root

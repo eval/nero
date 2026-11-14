@@ -27,20 +27,24 @@ module Nero
     result.value!
   end
 
-  def self.parse_file(path, env: nil, root: nil, &block)
+  def self.parse_file(path, env: nil, root: nil, **opts, &block)
     root ||= env&.to_s
-    result = Parser.new(root:, &block).parse_file(path)
+    result = Parser.new(root:, **opts, &block).parse_file(path)
     emit_warnings result.warnings if result.warnings?
     result.value!
   end
 
-  def self.config_for(file, env: nil, root: nil, &block)
+  # Classes config files may instantiate: dates and times are plausible config values.
+  # Unlike Rails' config_for (YAML.unsafe_load), arbitrary objects (!ruby/object) are refused.
+  CONFIG_PERMITTED_CLASSES = %w[Symbol Date Time].freeze
+
+  def self.config_for(file, env: nil, root: nil, permitted_classes: CONFIG_PERMITTED_CLASSES, &block)
     root ||= env&.to_s
     path = case file
     when Pathname then file
     else Pathname.new("config") / "#{file}.yml"
     end
-    parse_file(path.expand_path, root: root, &block)
+    parse_file(path.expand_path, root:, permitted_classes:, &block)
   end
 
   private_class_method def self.emit_warnings(warnings)

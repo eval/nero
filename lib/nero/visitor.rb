@@ -2,8 +2,11 @@
 
 module Nero
   class Visitor < ::Psych::Visitors::ToRuby
-    def self.build(tags, ctx)
-      visitor = create
+    # Like YAML.load (safe_load): only `permitted_classes` (class names or classes) can be
+    # instantiated, so `!ruby/object:...` raises Psych::DisallowedClass. Aliases are allowed.
+    def self.build(tags, ctx, permitted_classes: Parser::PERMITTED_CLASSES)
+      loader = ::Psych::ClassLoader::Restricted.new(permitted_classes.map(&:to_s), [])
+      visitor = new(::Psych::ScalarScanner.new(loader), loader)
       visitor.instance_variable_set(:@nero_tags, tags)
       visitor.instance_variable_set(:@nero_ctx, ctx)
       visitor

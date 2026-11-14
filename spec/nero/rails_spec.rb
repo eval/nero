@@ -13,6 +13,7 @@ module Rails
   end
 end
 
+require "date"
 require "nero"
 require "nero/rails"
 
@@ -78,6 +79,10 @@ RSpec.describe "Nero::Rails" do
     it "parses without a Rails application (credentials are looked up lazily)" do
       Rails.application = nil
       expect(Nero.parse("a: 1", environ: {})).to eq("a" => 1)
+    end
+
+    it "passes other parser options through (permitted_classes)" do
+      expect(Nero.parse("a: 2026-11-14", environ: {}, permitted_classes: %w[Date])["a"]).to eq(Date.new(2026, 11, 14))
     end
 
     it "calls the user block once" do

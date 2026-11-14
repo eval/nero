@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require "tempfile"
+require "tmpdir"
+require "fileutils"
+require "date"
 
 RSpec.describe Nero do
   let(:parser) { Nero::Parser.new(environ: {}) }
@@ -231,6 +234,54 @@ RSpec.describe Nero do
 
     it "coerces a default that YAML already made a boolean" do
       expect(Nero.parse("a: !env/bool [FOO, off]", environ: {})["a"]).to eq false
+    end
+  end
+
+  describe "loading Ruby objects" do
+    describe "Nero.parse: like YAML.load, only Symbol" do
+      samples { Nero.parse(_1, environ: {})["a"] }
+
+      sample "a: :sym", :sym
+      sample "a: !ruby/object:Object {}", Nero::ParseError, /unspecified class: Object/
+      sample "a: !ruby/object:OpenStruct {x: 1}", Nero::ParseError, /unspecified class: OpenStruct/
+      sample "a: 2026-11-14", Nero::ParseError, /unspecified class: Date/
+    end
+
+    describe "with permitted_classes" do
+      samples { Nero.parse(_1, environ: {}, permitted_classes: %w[Symbol Date])["a"] }
+
+      sample "a: 2026-11-14", Date.new(2026, 11, 14)
+      sample "a: !ruby/object:Object {}", Nero::ParseError, /unspecified class: Object/
+    end
+
+    it "keeps aliases and Nero tags working" do
+      expect(Nero.parse("a: &x 1\nb: *x\nc: !env/integer X\nd: !ref a", environ: {"X" => "2"}))
+        .to eq("a" => 1, "b" => 1, "c" => 2, "d" => 1)
+    end
+
+    it "reports a disallowed class as an error on the Result" do
+      result = parser.parse("a: !ruby/object:Object {}")
+      expect(result).not_to be_ok
+      expect(result.errors.first.message).to match(/permitted_classes/)
+    end
+
+    describe "Nero.config_for: also Date and Time" do
+      around do |ex|
+        Dir.mktmpdir do |dir|
+          FileUtils.mkdir_p(File.join(dir, "config"))
+          @config_dir = dir
+          Dir.chdir(dir) { ex.run }
+        end
+      end
+
+      samples do
+        File.write(File.join(@config_dir, "config/app.yml"), "development:\n  a: #{_1}\n")
+        Nero.config_for(:app, env: :development)["a"]
+      end
+
+      sample "2026-11-14", Date.new(2026, 11, 14)
+      sample "2026-11-14 10:00:00 +01:00", Time.new(2026, 11, 14, 10, 0, 0, "+01:00")
+      sample "!ruby/object:OpenStruct {x: 1}", Nero::ParseError, /unspecified class: OpenStruct/
     end
   end
 

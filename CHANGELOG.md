@@ -36,6 +36,10 @@ Total refactor and so quite some breaking changes.
   - Requires Ruby >= 3.3 (the oldest Ruby still receiving security fixes).
   - `!env/bool` is strict: only `1/y/yes/true/on` (true) and `0/n/no/false/off` (false) are accepted, case-insensitive and ignoring surrounding whitespace. Anything else (including an empty value) is a parse error. Before, the check was not anchored, so any value containing e.g. a `y` (`maybe`, `anything`) was `true`.
 
+## Security
+
+  - YAML can no longer instantiate arbitrary Ruby objects (`!ruby/object:...`). Like `YAML.load`, `Nero.parse`/`parse_file` only allow `Symbol`; `Nero.config_for` also allows `Date` and `Time` (unlike Rails' `config_for`, which uses `YAML.unsafe_load`). Anything else is a parse error; allow more with `permitted_classes:`, e.g. `Nero.parse(yaml, permitted_classes: %w[Symbol Date])`. Aliases (anchors) stay allowed.
+
 ## Features
 
   - Deprecation warnings: deprecated usage is reported as `[nero] DEPRECATION WARNING: ...` on stderr (via `Kernel#warn`, so `-W0` silences it). `Nero::Parser#parse` exposes them as `Result#warnings`.
