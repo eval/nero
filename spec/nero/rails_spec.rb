@@ -58,6 +58,11 @@ RSpec.describe "Nero::Rails" do
       expect(result).not_to be_ok
       expect(result.errors.first.message).to match(/nonexistent/)
     end
+
+    it "returns nil for a missing credential with NERO_ALL_OPTIONAL" do
+      expect(Nero.load("val: !credentials nonexistent", environ: {"NERO_ALL_OPTIONAL" => "1"}))
+        .to eq("val" => nil)
+    end
   end
 
   describe "!path/rails_root" do

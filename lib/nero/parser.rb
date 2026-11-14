@@ -20,8 +20,19 @@ module Nero
     PERMITTED_CLASSES = %w[Symbol].freeze
 
     # symbolize_names: as in YAML.load, string keys become symbols (other keys stay as they are).
-    def initialize(environ: ENV, root: nil, permitted_classes: PERMITTED_CLASSES, symbolize_names: false, &block)
+    # all_optional: every value that can be missing (env vars, Rails credentials) is optional:
+    #   missing resolves to the fallback or nil instead of an error. For tasks that load the
+    #   config without needing it, e.g. `rails assets:precompile` or `rails credentials:edit`.
+    #   Defaults to whether NERO_ALL_OPTIONAL is set (non-empty) in environ. The old name
+    #   NERO_ENV_ALL_OPTIONAL still works, with a deprecation warning, until 0.8.
+    def initialize(environ: ENV, root: nil, permitted_classes: PERMITTED_CLASSES, symbolize_names: false,
+      all_optional: nil, &block)
       @environ = environ
+      if all_optional.nil?
+        @deprecated_all_optional = set?("NERO_ENV_ALL_OPTIONAL") && !set?("NERO_ALL_OPTIONAL")
+        all_optional = set?("NERO_ALL_OPTIONAL") || set?("NERO_ENV_ALL_OPTIONAL")
+      end
+      @all_optional = all_optional
       @root = root&.to_s
       @permitted_classes = permitted_classes
       @symbolize_names = symbolize_names
@@ -64,7 +75,10 @@ module Nero
 
     def parse(yaml, dir: nil)
       tree = ::Psych.parse_stream(yaml)
-      ctx = Context.new(environ: @environ, dir:)
+      ctx = Context.new(environ: @environ, dir:, all_optional: @all_optional)
+      if @deprecated_all_optional
+        ctx.deprecate("NERO_ENV_ALL_OPTIONAL is deprecated", use: "NERO_ALL_OPTIONAL", removed_in: "0.8")
+      end
 
       if @root
         mark_inactive_roots(tree)
@@ -97,6 +111,8 @@ module Nero
     end
 
     private
+
+    def set?(var) = !@environ.fetch(var, "").empty?
 
     # A key as it appears in the loaded result (the YAML nodes themselves always hold strings).
     def key(name) = @symbolize_names ? name.to_sym : name
