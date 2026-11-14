@@ -7,5 +7,15 @@ require "nero"
 # You can add fixtures and/or initialization code here to make experimenting
 # with your gem easier. You can also use a different console, if you like.
 
+# Reload lib/ after editing: throw the Nero constant away and require it again.
+# Objects you made before (parsers, results) keep the old classes; build them anew.
+def reload!
+  lib = File.expand_path("../lib", __dir__)
+  Object.send(:remove_const, :Nero) if defined?(::Nero)
+  $LOADED_FEATURES.reject! { |f| f.start_with?(lib) }
+  require "nero"
+  true
+end
+
 require "irb"
 IRB.start(__FILE__)
