@@ -36,9 +36,8 @@ module Nero
     end
 
     def parse(yaml, dir: nil)
-      errors = []
       tree = ::Psych.parse_stream(yaml)
-      ctx = Context.new(environ: @environ, errors: errors, dir: dir)
+      ctx = Context.new(environ: @environ, dir:)
 
       if @root
         mark_inactive_roots(tree)
@@ -51,18 +50,18 @@ module Nero
       if @root
         unless value.is_a?(Hash) && value.key?(@root)
           ctx.add_error("root #{@root.inspect} not found in top-level keys")
-          return Result.new(nil, errors.freeze)
+          return Result.new(nil, errors: ctx.errors.dup.freeze, warnings: ctx.warnings.dup.freeze)
         end
         value = value[@root]
       end
 
       value = resolve_refs(value, value, ctx) if contains_ref?(value)
-      Result.new(value, errors.freeze)
+      Result.new(value, errors: ctx.errors.dup.freeze, warnings: ctx.warnings.dup.freeze)
     end
 
     def parse_file(path)
       dir = File.dirname(File.realpath(path))
-      parse(File.read(path), dir: dir)
+      parse(File.read(path), dir:)
     end
 
     private

@@ -21,12 +21,16 @@ require_relative "nero/parser"
 
 module Nero
   def self.parse(yaml, **opts, &block)
-    Parser.new(**opts, &block).parse(yaml).value!
+    result = Parser.new(**opts, &block).parse(yaml)
+    emit_warnings result.warnings if result.warnings?
+    result.value!
   end
 
   def self.parse_file(path, env: nil, root: nil, &block)
     root ||= env&.to_s
-    Parser.new(root: root, &block).parse_file(path).value!
+    result = Parser.new(root:, &block).parse_file(path)
+    emit_warnings result.warnings if result.warnings?
+    result.value!
   end
 
   def self.config_for(file, env: nil, root: nil, &block)
@@ -36,6 +40,12 @@ module Nero
     else Pathname.new("config") / "#{file}.yml"
     end
     parse_file(path.expand_path, root: root, &block)
+  end
+
+  private_class_method def self.emit_warnings(warnings)
+    warnings.each do |warn|
+      Kernel.warn("[nero] #{warn}")
+    end
   end
 end
 
