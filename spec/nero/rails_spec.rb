@@ -46,6 +46,11 @@ RSpec.describe "Nero::Rails" do
       expect(result).to eq("key" => "AKIA")
     end
 
+    it "returns a false credential instead of reporting it missing" do
+      credentials[:feature] = false
+      expect(Nero.parse("f: !credentials feature", environ: {})).to eq("f" => false)
+    end
+
     it "collects error when credential is missing" do
       parser = Nero::Parser.new(environ: {})
       result = parser.parse("val: !credentials nonexistent")
@@ -70,6 +75,17 @@ RSpec.describe "Nero::Rails" do
   end
 
   describe "ParserExtension" do
+    it "parses without a Rails application (credentials are looked up lazily)" do
+      Rails.application = nil
+      expect(Nero.parse("a: 1", environ: {})).to eq("a" => 1)
+    end
+
+    it "calls the user block once" do
+      calls = 0
+      Nero.parse("a: 1", environ: {}) { calls += 1 }
+      expect(calls).to eq(1)
+    end
+
     it "still allows user block to override tags" do
       result = Nero.parse("val: !credentials ignored", environ: {}) do |c|
         c.add_tag("credentials", ->(args, **) { "overridden" })
