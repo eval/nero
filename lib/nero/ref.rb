@@ -4,6 +4,7 @@ module Nero
   class Ref
     attr_reader :path
 
-    def initialize(path) = @path = path.split(".")
+    # path: the keys to follow, e.g. ["a", "c"] for `!ref a.c`.
+    def initialize(path) = @path = path
   end
 end
