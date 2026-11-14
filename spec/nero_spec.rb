@@ -39,6 +39,11 @@ RSpec.describe Nero do
   end
 
   describe "!env" do
+    it "requires 1 arg" do
+      expect { Nero.parse("db: !env", environ: {}) }
+        .to raise_error(Nero::ParseError, /require/)
+    end
+
     it "resolves from a scalar" do
       expect(Nero.parse("db: !env DATABASE_URL", environ: {"DATABASE_URL" => "postgres://localhost/mydb"}))
         .to eq("db" => "postgres://localhost/mydb")
@@ -160,6 +165,61 @@ RSpec.describe Nero do
     end
   end
 
+  describe "!env/integer" do
+    samples { Nero.parse("a: !env/integer FOO", environ: {"FOO" => _1})["a"] }
+
+    sample "42", 42
+    sample "08", 8 # decimal, not octal
+    sample "-1", -1
+    sample "1.5", Nero::ParseError
+    sample "x", Nero::ParseError
+  end
+
+  describe "!env/float" do
+    samples { Nero.parse("a: !env/float FOO", environ: {"FOO" => _1})["a"] }
+
+    sample "1.5", 1.5
+    sample "08", 8.0
+    sample "2", 2.0
+    sample "x", Nero::ParseError
+  end
+
+  describe "!env/bool" do
+    samples { Nero.parse("a: !env/bool FOO", environ: {"FOO" => _1})["a"] }
+
+    # the yays
+    sample "y", true
+    sample "Y", true
+    sample "1", true
+    sample "yes", true
+    sample "Yes", true
+    sample "true", true
+    sample "TruE", true
+    sample "on", true
+    sample " on ", true
+
+    # the nays
+    sample "n", false
+    sample "N", false
+    sample "0", false
+    sample "no", false
+    sample "No", false
+    sample "false", false
+    sample "FaLse", false
+    sample "off", false
+
+    sample "yy", Nero::ParseError
+    sample "", Nero::ParseError
+
+    it "coerces the default when provided" do
+      expect(Nero.parse("a: !env/bool [FOO, 1]", environ: {})["a"]).to eq true
+    end
+
+    it "coerces a default that YAML already made a boolean" do
+      expect(Nero.parse("a: !env/bool [FOO, off]", environ: {})["a"]).to eq false
+    end
+  end
+
   describe "!ref" do
     it "uses ref-ed value" do
       expect(Nero.parse(<<~Y, environ: {})["domain"]).to eq("http://localhost:3000")
@@ -203,10 +263,10 @@ RSpec.describe Nero do
     end
 
     it "emits deprecation warning when using the arrays" do
-      expect { Nero.parse(<<~Y) }.to output(/DEPRECATION WARNING: !ref \["a", "c"\] is deprecated/).to_stderr
-      a:
-        c: 3
-      b: !ref [a, c]
+      expect { Nero.parse(<<~Y) }.to output(/DEPRECATION WARNING: !ref \[a, c\] is deprecated/).to_stderr
+        a:
+          c: 3
+        b: !ref [a, c]
       Y
     end
 

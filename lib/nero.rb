@@ -20,6 +20,7 @@ require_relative "nero/visitor"
 require_relative "nero/parser"
 
 module Nero
+  # TODO be more like YAML: load and load_file
   def self.parse(yaml, **opts, &block)
     result = Parser.new(**opts, &block).parse(yaml)
     emit_warnings result.warnings if result.warnings?

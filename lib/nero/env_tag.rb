@@ -10,11 +10,17 @@ module Nero
     def resolve(args, context:)
       var_name = args[0]
       default = args[1]
+
+      if var_name.nil?
+        context.add_error("!env tags require a var_name, e.g. `!env FOO`, or `!env [FOO, fallback]`")
+        return
+      end
+
       raw = context.environ[var_name]
 
       if raw.nil? && default.nil?
         context.add_error("environment variable #{var_name} is not set") unless @optional
-        return nil
+        return
       end
 
       value = raw || default.to_s
