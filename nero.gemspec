@@ -22,6 +22,14 @@ Gem::Specification.new do |spec|
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.3.0"
 
+  # 0.7.x only (remove in 0.8): the one breaking change that fails silently.
+  spec.post_install_message = <<~MSG
+    Nero 0.7 has breaking changes. Most notably:
+    Nero.load / Nero.load_file now return STRING keys, like YAML.load.
+    Use symbolize_names: true, or Nero.config_for (symbol keys, like Rails).
+    Upgrade notes: https://github.com/eval/nero/blob/main/CHANGELOG.md
+  MSG
+
   # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
   spec.metadata["homepage_uri"] = spec.homepage

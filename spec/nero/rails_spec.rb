@@ -38,18 +38,18 @@ RSpec.describe "Nero::Rails" do
 
   describe "!credentials" do
     it "resolves a scalar key" do
-      result = Nero.parse("secret: !credentials secret_key_base", environ: {})
+      result = Nero.load("secret: !credentials secret_key_base", environ: {})
       expect(result).to eq("secret" => "abc123")
     end
 
     it "resolves nested keys from a sequence" do
-      result = Nero.parse("key: !credentials [aws, access_key_id]", environ: {})
+      result = Nero.load("key: !credentials [aws, access_key_id]", environ: {})
       expect(result).to eq("key" => "AKIA")
     end
 
     it "returns a false credential instead of reporting it missing" do
       credentials[:feature] = false
-      expect(Nero.parse("f: !credentials feature", environ: {})).to eq("f" => false)
+      expect(Nero.load("f: !credentials feature", environ: {})).to eq("f" => false)
     end
 
     it "collects error when credential is missing" do
@@ -70,7 +70,7 @@ RSpec.describe "Nero::Rails" do
 
   describe "!secret_key_base" do
     it "resolves to the app secret key base" do
-      result = Nero.parse("secret: !secret_key_base _", environ: {})
+      result = Nero.load("secret: !secret_key_base _", environ: {})
       expect(result).to eq("secret" => "abc123")
     end
   end
@@ -78,21 +78,21 @@ RSpec.describe "Nero::Rails" do
   describe "ParserExtension" do
     it "parses without a Rails application (credentials are looked up lazily)" do
       Rails.application = nil
-      expect(Nero.parse("a: 1", environ: {})).to eq("a" => 1)
+      expect(Nero.load("a: 1", environ: {})).to eq("a" => 1)
     end
 
     it "passes other parser options through (permitted_classes)" do
-      expect(Nero.parse("a: 2026-11-14", environ: {}, permitted_classes: %w[Date])["a"]).to eq(Date.new(2026, 11, 14))
+      expect(Nero.load("a: 2026-11-14", environ: {}, permitted_classes: %w[Date])["a"]).to eq(Date.new(2026, 11, 14))
     end
 
     it "calls the user block once" do
       calls = 0
-      Nero.parse("a: 1", environ: {}) { calls += 1 }
+      Nero.load("a: 1", environ: {}) { calls += 1 }
       expect(calls).to eq(1)
     end
 
     it "still allows user block to override tags" do
-      result = Nero.parse("val: !credentials ignored", environ: {}) do |c|
+      result = Nero.load("val: !credentials ignored", environ: {}) do |c|
         c.add_tag("credentials", ->(args, **) { "overridden" })
       end
       expect(result).to eq("val" => "overridden")
