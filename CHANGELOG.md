@@ -32,7 +32,6 @@ Total refactor and so quite some breaking changes.
   - !str/format changed — now also available as !format; the map form (fmt: key) is replaced by a sequence with named-parameter hashes: !format ["http://%<host>s", host: !ref host].
   - load_config removed (was already deprecated).
   - Nero::Util removed — deep_symbolize_keys and deep_transform_values are no longer needed.
-  - NERO_ENV_ALL_OPTIONAL env var no longer supported.
   - Requires Ruby >= 3.3 (the oldest Ruby still receiving security fixes).
   - `!env?/bool` (formerly `!env/bool?`) returns `nil` when the variable is not set (0.6: `false`): missing is not the same as "no". Use a fallback for a default: `!env?/bool [DEBUG, false]`, or `!env/bool [DEBUG, false]`.
   - `!env/bool` is strict: only `1/y/yes/true/on` (true) and `0/n/no/false/off` (false) are accepted, case-insensitive and ignoring surrounding whitespace. Anything else (including an empty value) is a parse error. Before, the check was not anchored, so any value containing e.g. a `y` (`maybe`, `anything`) was `true`.
@@ -42,6 +41,8 @@ Total refactor and so quite some breaking changes.
   - YAML can no longer instantiate arbitrary Ruby objects (`!ruby/object:...`). Like `YAML.load`, `Nero.parse`/`parse_file` only allow `Symbol`; `Nero.config_for` also allows `Date` and `Time` (unlike Rails' `config_for`, which uses `YAML.unsafe_load`). Anything else is a parse error; allow more with `permitted_classes:`, e.g. `Nero.parse(yaml, permitted_classes: %w[Symbol Date])`. Aliases (anchors) stay allowed.
 
 ## Features
+
+  - `NERO_ALL_OPTIONAL` (formerly `NERO_ENV_ALL_OPTIONAL`) also covers Rails `!credentials`: a missing env var or credential resolves to its fallback or `nil` instead of an error. Handy for tasks that boot the app without its config, e.g. `rails assets:precompile` or `rails credentials:edit`. Also available as a parser option: `Nero.load(yaml, all_optional: true)`. Only a non-empty value switches it on (`NERO_ALL_OPTIONAL=` is off). `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
 
   - `Nero.parse` / `Nero.parse_file` (0.7.0 release candidates) are deprecated aliases of `Nero.load` / `Nero.load_file`; removed in 0.8.
 

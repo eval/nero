@@ -152,10 +152,12 @@ The following tags are provided:
     ```
   - The names `env/integer?` etc. (with the `?` at the end) still work, with a deprecation warning, until 0.8.
 > [!TIP]  
-> Make all env-var's optional by providing `ENV["NERO_ENV_ALL_OPTIONAL"]`, e.g.
-```shell
-$ env NERO_ENV_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails asset:precompile
-```
+> Set `NERO_ALL_OPTIONAL` to make every env var (and, with Rails, every `!credentials` key) optional: missing values become their fallback or `nil` instead of an error. For tasks that boot the app without needing its config:
+> ```shell
+> $ NERO_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails assets:precompile
+> $ NERO_ALL_OPTIONAL=1 rails credentials:edit --environment production
+> ```
+> Or per call: `Nero.load(yaml, all_optional: true)`. The old name `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
 - `!path`  
   Create a [Pathname](https://rubyapi.org/3.4/o/pathname):
   ```yaml

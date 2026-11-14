@@ -17,6 +17,7 @@ module Nero
         keys = args.map(&:to_sym)
         value = credentials.dig(*keys)
         return value unless value.nil?
+        return nil if context.all_optional?
 
         context.add_error("credential #{args.join(".")} not found")
         nil

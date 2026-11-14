@@ -25,7 +25,7 @@ module Nero
       raw = context.environ[var_name]
 
       if raw.nil? && default.nil?
-        context.add_error("environment variable #{var_name} is not set") unless @optional
+        context.add_error("environment variable #{var_name} is not set") unless @optional || context.all_optional?
         return
       end
 

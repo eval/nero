@@ -126,6 +126,50 @@ RSpec.describe Nero do
     end
   end
 
+  describe "NERO_ALL_OPTIONAL / all_optional:" do
+    let(:yaml) { "db: !env DATABASE_URL\nport: !env/integer [PORT, 3000]\nthreads: !env/integer THREADS" }
+
+    samples { |environ| Nero.load(yaml, environ:) }
+
+    sample({}, Nero::ParseError, /DATABASE_URL is not set/)
+    sample({"NERO_ALL_OPTIONAL" => "1"}, {"db" => nil, "port" => 3000, "threads" => nil})
+    sample({"NERO_ALL_OPTIONAL" => ""}, Nero::ParseError, /DATABASE_URL is not set/)
+
+    it "still uses values that are set" do
+      expect(Nero.load("db: !env DATABASE_URL", environ: {"NERO_ALL_OPTIONAL" => "1", "DATABASE_URL" => "pg://"}))
+        .to eq("db" => "pg://")
+    end
+
+    it "still reports values that can't be coerced" do
+      expect { Nero.load("port: !env/integer PORT", environ: {"NERO_ALL_OPTIONAL" => "1", "PORT" => "x"}) }
+        .to raise_error(Nero::ParseError, /cannot coerce PORT/)
+    end
+
+    it "can be set explicitly, overriding the env var" do
+      expect(Nero.load("db: !env DATABASE_URL", environ: {}, all_optional: true)).to eq("db" => nil)
+      expect { Nero.load("db: !env DATABASE_URL", environ: {"NERO_ALL_OPTIONAL" => "1"}, all_optional: false) }
+        .to raise_error(Nero::ParseError)
+    end
+
+    context "NERO_ENV_ALL_OPTIONAL (deprecated name)" do
+      def parse(environ, **opts) = Nero::Parser.new(environ:, **opts).parse("db: !env DATABASE_URL")
+
+      it "still works, with a deprecation warning" do
+        result = parse({"NERO_ENV_ALL_OPTIONAL" => "1"})
+        expect(result.value!).to eq("db" => nil)
+        expect(result.warnings.first).to match(/NERO_ENV_ALL_OPTIONAL is deprecated .* \(use NERO_ALL_OPTIONAL\)/)
+      end
+
+      it "doesn't warn when NERO_ALL_OPTIONAL is set too" do
+        expect(parse({"NERO_ENV_ALL_OPTIONAL" => "1", "NERO_ALL_OPTIONAL" => "1"})).not_to be_warnings
+      end
+
+      it "doesn't warn when all_optional: is passed" do
+        expect(parse({"NERO_ENV_ALL_OPTIONAL" => "1"}, all_optional: true)).not_to be_warnings
+      end
+    end
+  end
+
   describe "root:" do
     it "selects a top-level key with a symbol" do
       yaml = "development:\n  port: 3000\nproduction:\n  port: 9000"
