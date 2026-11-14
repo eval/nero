@@ -79,13 +79,6 @@ RSpec.describe "Nero::Rails" do
     end
   end
 
-  describe "!secret_key_base" do
-    it "resolves to the app secret key base" do
-      result = Nero.load("secret: !secret_key_base _", environ: {})
-      expect(result).to eq("secret" => "abc123")
-    end
-  end
-
   describe "Nero.config_for" do
     around do |ex|
       Dir.mktmpdir do |app_root|

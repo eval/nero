@@ -652,9 +652,7 @@ RSpec.describe Nero do
         File.write(File.join(root, "db", "schema.rb"), "")
         File.write(File.join(conf_dir, "app.yml"), "schema: !path/git_root db/schema.rb")
 
-        result = Nero.load_file(File.join(conf_dir, "app.yml")) do |config|
-          config.add_tag("path/git_root", Nero::RootPathTag.new(containing: ".git"))
-        end
+        result = Nero.load_file(File.join(conf_dir, "app.yml"))
         expect(result).to eq("schema" => Pathname.new(File.join(root, "db/schema.rb")))
       end
     end
@@ -664,12 +662,10 @@ RSpec.describe Nero do
       Dir.mktmpdir do |tmp|
         root = File.realpath(tmp)
         FileUtils.mkdir(File.join(root, ".git"))
-        File.write(File.join(root, "app.yml"), 'root: !path/git_root ""')
+        File.write(File.join(root, "app.yml"), "root: !path/git_root\nroot2: !path/git_root \"\"")
 
-        result = Nero.load_file(File.join(root, "app.yml")) do |config|
-          config.add_tag("path/git_root", Nero::RootPathTag.new(containing: ".git"))
-        end
-        expect(result).to eq("root" => Pathname.new(root))
+        result = Nero.load_file(File.join(root, "app.yml"))
+        expect(result).to eq("root" => Pathname.new(root), "root2" => Pathname.new(root))
       end
     end
 

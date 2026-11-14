@@ -29,6 +29,8 @@ Total refactor and so quite some breaking changes.
   - Keys: `Nero.load`/`load_file` give string keys (`symbolize_names: true` for symbols), `Nero.config_for` gives symbol keys.
   - !uri and !path tags removed — !uri is gone entirely; !path is no longer a built-in.
   - `Nero::PathRootTag` renamed to `Nero::RootPathTag` with a new constructor API.
+  - `!path/rails_root` is only available with Rails (`nero/rails`, loaded by the Railtie); `!path/git_root` stays built in.
+  - `!secret_key_base` (0.7.0 release candidates only) removed. Read it in Ruby instead (`Rails.application.secret_key_base`, or better `Rails.application.key_generator.generate_key("purpose")`), or register it as a one-line custom tag.
   - !str/format changed — now also available as !format; the map form (fmt: key) is replaced by a sequence with named-parameter hashes: !format ["http://%<host>s", host: !ref host].
   - load_config removed (was already deprecated).
   - Nero::Util removed — deep_symbolize_keys and deep_transform_values are no longer needed.
