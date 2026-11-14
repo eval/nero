@@ -53,14 +53,19 @@ module Nero
   # Unlike Rails' config_for (YAML.unsafe_load), arbitrary objects (!ruby/object) are refused.
   CONFIG_PERMITTED_CLASSES = %w[Symbol Date Time].freeze
 
+  # Where config_for looks for `<name>.yml`: `config/` in the current directory.
+  # With Rails (nero/rails), `Rails.root/config` instead.
+  def self.config_dir = Pathname.pwd / "config"
+
   # Like Rails.application.config_for: symbol keys. See CONFIG_PERMITTED_CLASSES.
+  # file: a name (`:app` → `config_dir/app.yml`) or a Pathname (used as is, relative to the cwd).
   def self.config_for(file, env: nil, root: nil, permitted_classes: CONFIG_PERMITTED_CLASSES, &block)
     root ||= env&.to_s
     path = case file
-    when Pathname then file
-    else Pathname.new("config") / "#{file}.yml"
+    when Pathname then file.expand_path
+    else config_dir / "#{file}.yml"
     end
-    load_file(path.expand_path, root:, permitted_classes:, symbolize_names: true, &block)
+    load_file(path, root:, permitted_classes:, symbolize_names: true, &block)
   end
 
   private_class_method def self.emit_warnings(warnings)

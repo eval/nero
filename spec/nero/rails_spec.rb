@@ -11,9 +11,15 @@ module Rails
   def self.application=(app)
     @application = app
   end
+
+  class << self
+    attr_accessor :root
+  end
 end
 
 require "date"
+require "tmpdir"
+require "fileutils"
 require "nero"
 require "nero/rails"
 
@@ -77,6 +83,32 @@ RSpec.describe "Nero::Rails" do
     it "resolves to the app secret key base" do
       result = Nero.load("secret: !secret_key_base _", environ: {})
       expect(result).to eq("secret" => "abc123")
+    end
+  end
+
+  describe "Nero.config_for" do
+    around do |ex|
+      Dir.mktmpdir do |app_root|
+        FileUtils.mkdir_p(File.join(app_root, "config"))
+        File.write(File.join(app_root, "config/app.yml"), "test:\n  a: 1\n")
+        Rails.root = Pathname(app_root)
+        Dir.mktmpdir { |elsewhere| Dir.chdir(elsewhere) { ex.run } }
+      ensure
+        Rails.root = nil
+      end
+    end
+
+    it "finds config/<name>.yml under Rails.root, whatever the cwd" do
+      expect(Nero.config_for(:app, env: :test)).to eq(a: 1)
+    end
+
+    it "uses a Pathname as is" do
+      expect(Nero.config_for(Rails.root / "config/app.yml", env: :test)).to eq(a: 1)
+    end
+
+    it "falls back to ./config without Rails.root" do
+      Rails.root = nil
+      expect { Nero.config_for(:app, env: :test) }.to raise_error(Errno::ENOENT, %r{/config/app.yml})
     end
   end
 
