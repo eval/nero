@@ -3,18 +3,20 @@
 module Nero
   module Rails
     class CredentialsTag < BaseTag
-      attr_reader :credentials
-
-      # TODO lookup?
-      def initialize(credentials)
+      # credentials: anything responding to #dig. Defaults to Rails.application.credentials,
+      # looked up when the tag resolves, so a parser can be built before (or without) an app.
+      def initialize(credentials = nil)
         @credentials = credentials
+      end
+
+      def credentials
+        @credentials || ::Rails.application.credentials
       end
 
       def resolve(args, context:)
         keys = args.map(&:to_sym)
-        # value = ::Rails.application.credentials.dig(*keys)
         value = credentials.dig(*keys)
-        return value if value
+        return value unless value.nil?
 
         context.add_error("credential #{args.join(".")} not found")
         nil
