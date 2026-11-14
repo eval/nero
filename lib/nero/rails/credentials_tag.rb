@@ -12,7 +12,7 @@ module Nero
 
       def resolve(args, context:)
         keys = args.map(&:to_sym)
-        #value = ::Rails.application.credentials.dig(*keys)
+        # value = ::Rails.application.credentials.dig(*keys)
         value = credentials.dig(*keys)
         return value if value
 
