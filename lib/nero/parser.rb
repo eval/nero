@@ -19,10 +19,12 @@ module Nero
     # Classes YAML may instantiate, as YAML.load allows by default.
     PERMITTED_CLASSES = %w[Symbol].freeze
 
-    def initialize(environ: ENV, root: nil, permitted_classes: PERMITTED_CLASSES, &block)
+    # symbolize_names: as in YAML.load, string keys become symbols (other keys stay as they are).
+    def initialize(environ: ENV, root: nil, permitted_classes: PERMITTED_CLASSES, symbolize_names: false, &block)
       @environ = environ
       @root = root&.to_s
       @permitted_classes = permitted_classes
+      @symbolize_names = symbolize_names
       @tags = {}
       add_tag("env", EnvTag.new)
       add_tag("env?", EnvTag.new(optional: true))
@@ -68,7 +70,7 @@ module Nero
         mark_inactive_roots(tree)
       end
 
-      visitor = Visitor.build(@tags, ctx, permitted_classes: @permitted_classes)
+      visitor = Visitor.build(@tags, ctx, permitted_classes: @permitted_classes, symbolize_names: @symbolize_names)
       begin
         result = visitor.accept(tree)
       rescue ::Psych::DisallowedClass => e
@@ -78,11 +80,11 @@ module Nero
       value = result.first
 
       if @root
-        unless value.is_a?(Hash) && value.key?(@root)
+        unless value.is_a?(Hash) && value.key?(key(@root))
           ctx.add_error("root #{@root.inspect} not found in top-level keys")
           return Result.new(nil, errors: ctx.errors.dup.freeze, warnings: ctx.warnings.dup.freeze)
         end
-        value = value[@root]
+        value = value[key(@root)]
       end
 
       value = resolve_refs(value, value, ctx) if contains_ref?(value)
@@ -95,6 +97,9 @@ module Nero
     end
 
     private
+
+    # A key as it appears in the loaded result (the YAML nodes themselves always hold strings).
+    def key(name) = @symbolize_names ? name.to_sym : name
 
     def mark_inactive_roots(tree)
       doc = tree.children.first
@@ -147,7 +152,7 @@ module Nero
           ctx.add_error("circular reference: #{key}")
           return nil
         end
-        target = value.path.reduce(root) { |h, k| h.is_a?(Hash) ? h[k] : nil }
+        target = value.path.reduce(root) { |h, k| h.is_a?(Hash) ? h[key(k)] : nil }
         if target.nil?
           ctx.add_error("unknown ref #{key}")
           return nil

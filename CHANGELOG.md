@@ -12,7 +12,7 @@ Total refactor and so quite some breaking changes.
 
 ## Breaking Changes
 
-  - Nero.load / Nero.load_file removed — replaced by Nero.parse and Nero.parse_file. These return values directly (or raise Nero::ParseError).
+  - **`Nero.load` / `Nero.load_file` now return string keys**, like `YAML.load` (0.6: symbol keys). `Nero.load(...)[:foo]` silently gives `nil`: use `symbolize_names: true`, or `Nero.config_for` (symbol keys, like Rails). They raise `Nero::ParseError` with all errors at once; `Nero::Parser#parse`/`#parse_file` return a `Result` instead.
   - Nero.configure / Nero.configuration removed — custom tags are now registered via a block passed to parse/parse_file/config_for:
 ```ruby
   # Before
@@ -26,7 +26,7 @@ Total refactor and so quite some breaking changes.
   - `Nero::BaseTag` API changed — tags now implement resolve(args, context:) instead of accessing coder/ctx. Tag options are passed via initialize instead of init_options.
   - !ref syntax changed — dot-notation `!ref base.url` is the preferred form. The sequence form `!ref [base, url]` still works but is deprecated (prints a warning) and will be removed in 0.8.
   - root: option replaces root:/env: and uses string keys (e.g. root: :development matches the string key "development").
-  - Keys are strings — previously keys were symbolized; now they stay as strings.
+  - Keys: `Nero.load`/`load_file` give string keys (`symbolize_names: true` for symbols), `Nero.config_for` gives symbol keys.
   - !uri and !path tags removed — !uri is gone entirely; !path is no longer a built-in.
   - `Nero::PathRootTag` renamed to `Nero::RootPathTag` with a new constructor API.
   - !str/format changed — now also available as !format; the map form (fmt: key) is replaced by a sequence with named-parameter hashes: !format ["http://%<host>s", host: !ref host].
@@ -34,6 +34,7 @@ Total refactor and so quite some breaking changes.
   - Nero::Util removed — deep_symbolize_keys and deep_transform_values are no longer needed.
   - NERO_ENV_ALL_OPTIONAL env var no longer supported.
   - Requires Ruby >= 3.3 (the oldest Ruby still receiving security fixes).
+  - `!env?/bool` (formerly `!env/bool?`) returns `nil` when the variable is not set (0.6: `false`): missing is not the same as "no". Use a fallback for a default: `!env?/bool [DEBUG, false]`, or `!env/bool [DEBUG, false]`.
   - `!env/bool` is strict: only `1/y/yes/true/on` (true) and `0/n/no/false/off` (false) are accepted, case-insensitive and ignoring surrounding whitespace. Anything else (including an empty value) is a parse error. Before, the check was not anchored, so any value containing e.g. a `y` (`maybe`, `anything`) was `true`.
 
 ## Security
@@ -41,6 +42,8 @@ Total refactor and so quite some breaking changes.
   - YAML can no longer instantiate arbitrary Ruby objects (`!ruby/object:...`). Like `YAML.load`, `Nero.parse`/`parse_file` only allow `Symbol`; `Nero.config_for` also allows `Date` and `Time` (unlike Rails' `config_for`, which uses `YAML.unsafe_load`). Anything else is a parse error; allow more with `permitted_classes:`, e.g. `Nero.parse(yaml, permitted_classes: %w[Symbol Date])`. Aliases (anchors) stay allowed.
 
 ## Features
+
+  - `Nero.parse` / `Nero.parse_file` (0.7.0 release candidates) are deprecated aliases of `Nero.load` / `Nero.load_file`; removed in 0.8.
 
   - Deprecation warnings: deprecated usage is reported as `[nero] DEPRECATION WARNING: ...` on stderr (via `Kernel#warn`, so `-W0` silences it). `Nero::Parser#parse` exposes them as `Result#warnings`.
 

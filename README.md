@@ -13,7 +13,7 @@ development:
   secret: !env [SECRET, "dummy"]
 
   # optional env-var with coercion
-  debug?: !env/bool? DEBUG
+  debug?: !env?/bool DEBUG
 
 production:
   # required env-var (not required during development)
@@ -71,7 +71,7 @@ development:
   # env-var with a fallback
   secret: !env [SECRET, "dummy"]
   # Though the default is false, explicitly providing "false"/"off"/"n"/"no" also works.
-  debug?: !env/bool? DEBUG
+  debug?: !env?/bool DEBUG
 production:
   # fail-fast on absence of SECRET
   secret: !env SECRET
@@ -83,26 +83,40 @@ Loading this config:
 
 ```ruby
 # Loading development
-Nero.parse_file("config/app.yml", root: :development)
+Nero.load_file("config/app.yml", root: :development)
 # ...and no ENV-vars were provided
-#=> {secret: "dummy", debug?: false}
+#=> {"secret" => "dummy", "debug?" => nil}
 
-# ...with ENV {"debug" => "true"}
-#=> {secret: "dummy", debug?: true}
+# ...with ENV {"DEBUG" => "true"}
+#=> {"secret" => "dummy", "debug?" => true}
 
 # Loading production
-Nero.parse_file("config/app.yml", root: :production)
+Nero.load_file("config/app.yml", root: :production)
 # ...and no ENV-vars were provided
-# raises error: key not found: "SECRET" (KeyError)
+# raises Nero::ParseError: environment variable SECRET is not set, ...
 
 # ...with ENV {"SECRET" => "s3cr3t", "MAX_THREADS" => "3"}
-#=> {secret: "s3cr3t", max_threads: 3}
+#=> {"secret" => "s3cr3t", "max_threads" => 3}
 ```
-> [!TIP]  
-> You can also use `Nero.config_for(:app)` (similar to [Rails.application.config_for](https://api.rubyonrails.org/classes/Rails/Application.html#method-i-config_for)).  
-> In Rails applications this gets configured for you. For other application you might need to adjust the `config_dir`:
+
+Nero's entry points behave like their namesakes:
+
+| | Behaves like | Keys | Classes YAML may create |
+|---|---|---|---|
+| `Nero.load(yaml)`, `Nero.load_file(path)` | `YAML.load`, `YAML.load_file` | strings (`symbolize_names: true` for symbols) | `Symbol` |
+| `Nero.config_for(:app, env:)` | `Rails.application.config_for` | symbols | `Symbol`, `Date`, `Time` |
+
+Differences from `YAML.load`: aliases (anchors) are allowed, and all problems are reported at once in a `Nero::ParseError` (see `#errors`). Allow more classes with `permitted_classes:`. Arbitrary objects (`!ruby/object:...`) are refused by default, also in `config_for` (Rails' `config_for` uses `YAML.unsafe_load`).
+
 ```ruby
-Nero.config_for(:settings, env: Rails.env)
+# config/settings.yml, relative to the current directory (in Rails, env defaults to Rails.env)
+Nero.config_for(:settings, env: :production)
+#=> {secret: "s3cr3t", max_threads: 3}
+
+# Without raising: a Result with value, errors and warnings
+result = Nero::Parser.new(root: :production).parse_file("config/app.yml")
+result.ok? #=> false
+result.errors.map(&:message) #=> ["environment variable SECRET is not set"]
 ```
 
 [API Documentation](https://eval.github.io/nero/).
@@ -121,22 +135,22 @@ The following tags are provided:
   # ...or nil
   secret: !env? SECRET
   ```
-- to coerce env-values:
-  - `env/integer`, `env/integer?`, `env/float`, `env/float?`:  
+- to coerce env-values: `env/<type>` (required) and `env?/<type>` (optional, `nil` when not provided), for the types `integer` (or `int`), `float`, `bool` (or `boolean`) and `path`:
     ```yaml
     port: !env/integer [PORT, 3000]
-    threads: !env/integer? THREADS # nil when not provided
+    threads: !env?/integer THREADS # nil when not provided
     threshold: !env/float CUTOFF
     ```
-  - `env/bool`, `env/bool?`:  
+  - bools accept `1/y/yes/true/on` and `0/n/no/false/off` (case-insensitive); anything else is an error:
     ```yaml
-    # required (valid values 'y(es)'/'n(o)', 'true'/'false', 'on'/'off')
+    # required
     over18: !env/bool OVER18
     # optional, with fallback:
     secure: !env/bool [SECURE, true]
-    # ...or false:
-    debug?: !env/bool? DEBUG
+    # ...or nil:
+    debug?: !env?/bool DEBUG
     ```
+  - The names `env/integer?` etc. (with the `?` at the end) still work, with a deprecation warning, until 0.8.
 > [!TIP]  
 > Make all env-var's optional by providing `ENV["NERO_ENV_ALL_OPTIONAL"]`, e.g.
 ```shell
