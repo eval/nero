@@ -194,6 +194,23 @@ RSpec.describe Nero do
       Y
     end
 
+    it "can ref nested data using the sequence form" do
+      expect(Nero.parse(<<~Y, environ: {})["b"]).to eq(3)
+        a:
+          c: 3
+        b: !ref [a, c]
+      Y
+    end
+
+    it "errs on unknown refs in the sequence form" do
+      result = parser.parse(<<~Y)
+        a:
+          c: 3
+        b: !ref [a, x]
+      Y
+      expect(result.errors.first.message).to match(/unknown ref a\.x/)
+    end
+
     it "resolves relative to root" do
       expect(Nero.parse(<<~Y, environ: {}, root: :development)["b"]).to eq(1)
         a: 2
