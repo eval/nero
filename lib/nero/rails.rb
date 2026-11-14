@@ -26,7 +26,7 @@ module Nero
   module Rails
     module DefaultEnv
       def config_for(file, env: ::Rails.env, **opts, &block)
-        super(file, env:, **opts, &block)
+        super
       end
     end
   end
