@@ -53,6 +53,7 @@ Total refactor and so quite some breaking changes.
   - `!env/integer` parses decimal only: `08` is `8` instead of an error (`Integer("08")` reads it as octal).
   - `!env` (and the coercing variants) without a variable name is a parse error instead of looking up `nil`.
   - `!ref [a, c]` resolved silently to `a` during the refactor; it resolves to `a.c` again.
+  - Rails: `Nero.config_for(:app)` reads `Rails.root/config/app.yml` again, whatever the current directory (as 0.6 did via `config_dir`); without Rails it's `./config`. `Nero.config_dir` is the method to override.
   - Rails: credentials are looked up when a `!credentials` tag resolves, so parsing works before (or without) a Rails application; a `false` credential is returned instead of reported missing; a block passed to `parse`/`config_for` runs once.
 
 ## Developer

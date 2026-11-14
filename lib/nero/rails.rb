@@ -29,6 +29,12 @@ module Nero
       def config_for(file, env: ::Rails.env, **opts, &block)
         super
       end
+
+      # Rails.root/config, so config_for works from any directory (specs, rake tasks).
+      # Falls back to ./config before the app has a root.
+      def config_dir
+        ::Rails.root ? Pathname(::Rails.root) / "config" : super
+      end
     end
   end
 end
