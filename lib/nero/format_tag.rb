@@ -3,12 +3,13 @@
 module Nero
   class FormatTag < BaseTag
     def resolve(args, context:)
-      template = args[0]
-      opts = args.each_with_object({}) do |arg, h|
-        h.merge!(arg.transform_keys(&:to_sym)) if arg.is_a?(Hash)
+      template, *fmt_args = args
+      if fmt_args.any? && fmt_args.all?(Hash)
+        fmt_args = [fmt_args.reduce({}, :merge).transform_keys(&:to_sym)]
       end
-      format(template, opts)
-    rescue KeyError => e
+
+      format(template, *fmt_args)
+    rescue KeyError, ArgumentError => e
       context.add_error("format error: #{e.message}")
       nil
     end
