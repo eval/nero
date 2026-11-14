@@ -1,0 +1,4 @@
+# For (personal) irb-settings that take precendence over .irbrc (excluded from git).
+puts "Loading #{__FILE__}"
+# IRB.conf[:HISTORY_FILE] = "tmp/.irb_history"
+# IRB.conf[:HISTORY] = -1 # all of it

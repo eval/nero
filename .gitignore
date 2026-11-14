@@ -5,7 +5,8 @@
 /doc/
 /pkg/
 /spec/reports/
-/tmp/
+/tmp/**
+!/tmp/.keep
 
 # rspec failure tracking
 .rspec_status
@@ -13,3 +14,4 @@ Gemfile.lock
 /gemfiles/*.lock
 
 /.envrc.local
+_irbrc
