@@ -602,6 +602,41 @@ RSpec.describe Nero do
   end
 
   describe "custom tags" do
+    describe "take precedence over built-in tags" do
+      # Every built-in name (with the Rails tags when nero/rails is loaded, as in the full suite).
+      builtin = Nero::Parser.new(environ: {}).instance_variable_get(:@tags).keys
+      override = ->(nero) { builtin.each { |name| nero.add_tag(name, ->(args, **) { "custom #{args.join}" }) } }
+      yaml = builtin.map.with_index { |name, i| "t#{i}: !#{name} x" }.join("\n")
+      expected = builtin.each_index.to_h { |i| ["t#{i}", "custom x"] }
+
+      around do |ex|
+        Dir.mktmpdir do |dir|
+          @dir = dir
+          FileUtils.mkdir(File.join(dir, "config"))
+          File.write(File.join(dir, "config/app.yml"), yaml)
+          ex.run
+        end
+      end
+
+      it("covers all built-in tags") { expect(builtin).to include("env", "env?/integer", "ref", "format", "ip", "env/list", "path/git_root") }
+
+      it "with Nero.load" do
+        expect(Nero.load(yaml, environ: {}, &override)).to eq(expected)
+      end
+
+      it "with Nero.load_file" do
+        expect(Nero.load_file(File.join(@dir, "config/app.yml"), environ: {}, &override)).to eq(expected)
+      end
+
+      it "with Nero.config_for" do
+        expect(Nero.config_for(Pathname(@dir) / "config/app.yml", env: nil, &override)).to eq(expected.transform_keys(&:to_sym))
+      end
+
+      it "with Nero::Parser" do
+        expect(Nero::Parser.new(environ: {}, &override).parse(yaml).value!).to eq(expected)
+      end
+    end
+
     context "args a scalar tag receives" do
       samples do |value|
         Nero.load("a: !echo #{value}", environ: {}) { |p| p.add_tag("echo", ->(args, **) { args }) }["a"]
