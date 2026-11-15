@@ -1,0 +1,9 @@
+[settings]
+# Let mise read the .ruby-version file of each app (off by default since 2025).
+idiomatic_version_file_enable_tools = ["ruby"]
+
+[tools]
+ruby = "3.3"
+
+[env]
+_.path = ["bin"]

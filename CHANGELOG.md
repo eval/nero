@@ -8,7 +8,70 @@ Changes can be:
 
 ## [Unreleased]
 
-- 🛡️ MFA required to publish this gem
+Total refactor and so quite some breaking changes. See [UPGRADING.md](UPGRADING.md) for a step-by-step guide from 0.6.
+
+## Breaking Changes
+
+  - **`Nero.load` / `Nero.load_file` now return string keys**, like `YAML.load` (0.6: symbol keys). `Nero.load(...)[:foo]` silently gives `nil`: use `symbolize_names: true`, or `Nero.config_for` (symbol keys, like Rails). They raise `Nero::ParseError` with all errors at once; `Nero::Parser#parse`/`#parse_file` return a `Result` instead.
+  - Nero.configure / Nero.configuration removed — custom tags are now registered via a block passed to parse/parse_file/config_for:
+```ruby
+  # Before
+  Nero.configure { |c| c.add_tag("rot/13", klass: RotTag[n: 13]) }
+  Nero.load("secret: !rot/13 uryyb")
+
+  # After
+  Nero.parse("secret: !rot/13 uryyb") { |c| c.add_tag("rot/13", RotTag.new(n: 13)) }
+```
+  - `Nero::Config` removed — results are plain Hashes (string keys) instead of a Config subclass with DigExt/dig!.
+  - `Nero::BaseTag` API changed — tags now implement resolve(args, context:) instead of accessing coder/ctx. Tag options are passed via initialize instead of init_options.
+  - !ref syntax changed — dot-notation `!ref base.url` is the preferred form. The sequence form `!ref [base, url]` still works but is deprecated (prints a warning) and will be removed in 0.8.
+  - root: option replaces root:/env: and uses string keys (e.g. root: :development matches the string key "development").
+  - Keys: `Nero.load`/`load_file` give string keys (`symbolize_names: true` for symbols), `Nero.config_for` gives symbol keys.
+  - !uri and !path tags removed — !uri is gone entirely; !path is no longer a built-in.
+  - `Nero::PathRootTag` renamed to `Nero::RootPathTag` with a new constructor API.
+  - `!path/rails_root` is only available with Rails (`nero/rails`, loaded by the Railtie); `!path/git_root` stays built in.
+  - `!secret_key_base` (0.7.0 release candidates only) removed. Read it in Ruby instead (`Rails.application.secret_key_base`, or better `Rails.application.key_generator.generate_key("purpose")`), or register it as a one-line custom tag.
+  - !str/format changed — now also available as !format; the map form (fmt: key) is replaced by a sequence with named-parameter hashes: !format ["http://%<host>s", host: !ref host].
+  - load_config removed (was already deprecated).
+  - Nero::Util removed — deep_symbolize_keys and deep_transform_values are no longer needed.
+  - Requires Ruby >= 3.3 (the oldest Ruby still receiving security fixes).
+  - `!env?/bool` (formerly `!env/bool?`) returns `nil` when the variable is not set (0.6: `false`): missing is not the same as "no". Use a fallback for a default: `!env?/bool [DEBUG, false]`, or `!env/bool [DEBUG, false]`.
+  - `!env/bool` is strict: only `1/y/yes/true/on` (true) and `0/n/no/false/off` (false) are accepted, case-insensitive and ignoring surrounding whitespace. Anything else (including an empty value) is a parse error. Before, the check was not anchored, so any value containing e.g. a `y` (`maybe`, `anything`) was `true`.
+
+## Security
+
+  - MFA required to publish this gem.
+  - YAML can no longer instantiate arbitrary Ruby objects (`!ruby/object:...`). Like `YAML.load`, `Nero.load`/`load_file` only allow `Symbol`; `Nero.config_for` also allows `Date` and `Time` (unlike Rails' `config_for`, which uses `YAML.unsafe_load`). Anything else is a parse error; allow more with `permitted_classes:`, e.g. `Nero.load(yaml, permitted_classes: %w[Symbol Date])`. Aliases (anchors) stay allowed.
+
+## Features
+
+  - `!env/list` / `!env?/list`: a comma-separated env value as an Array (`a.com, b.com` → `["a.com", "b.com"]`); the fallback can be a sequence: `!env/list [HOSTS, [localhost]]`.
+  - `!env/ip` / `!env?/ip`: an env value as `IPAddr` (address or CIDR range).
+
+  - `!ip`: an `IPAddr` from an address or CIDR range (`!ip 10.0.0.0/8`); a sequence of one nests a tag (`!ip [!env ADMIN_IP]`). Invalid addresses are a parse error.
+
+  - `NERO_ALL_OPTIONAL` (formerly `NERO_ENV_ALL_OPTIONAL`) also covers Rails `!credentials`: a missing env var or credential resolves to its fallback or `nil` instead of an error. Handy for tasks that boot the app without its config, e.g. `rails assets:precompile` or `rails credentials:edit`. Also available as a parser option: `Nero.load(yaml, all_optional: true)`. Only a non-empty value switches it on (`NERO_ALL_OPTIONAL=` is off). `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
+
+  - `Nero.parse` / `Nero.parse_file` (0.7.0 release candidates) are deprecated aliases of `Nero.load` / `Nero.load_file`; removed in 0.8.
+
+  - Deprecation warnings: deprecated usage is reported as `[nero] DEPRECATION WARNING: ...` on stderr (via `Kernel#warn`, so `-W0` silences it). `Nero::Parser#parse` exposes them as `Result#warnings`.
+
+## Bug fixes
+
+  - `!path/git_root` / `!path/rails_root` join all segments again, as in 0.6 (`[config, app.yml]` → `<root>/config/app.yml`; the release candidates dropped all but the first), so other tags can fill in segments: `!path/rails_root [storage, !env TENANT]`. A `nil` segment (e.g. a missing `!env?`), an absolute segment, a mapping or a non-string is a parse error instead of silently resolving to the root (or crashing on a number).
+  - Tag arguments: a bare tag (`a: !my/tag`) passes no args (`[]`, was `[nil]`), and a quoted scalar stays a string (`!my/tag "123"` → `["123"]`, `!my/tag ""` → `[""]`; was `[123]` and `[nil]`).
+  - `!env/integer` parses decimal only: `08` is `8` instead of an error (`Integer("08")` reads it as octal).
+  - `!env` (and the coercing variants) without a variable name is a parse error instead of looking up `nil`.
+  - `!ref [a, c]` resolved silently to `a` during the refactor; it resolves to `a.c` again.
+  - Rails: `Nero.config_for(:app)` reads `Rails.root/config/app.yml` again, whatever the current directory (as 0.6 did via `config_dir`); without Rails it's `./config`. `Nero.config_dir` is the method to override.
+  - Rails: credentials are looked up when a `!credentials` tag resolves, so parsing works before (or without) a Rails application; a `false` credential is returned instead of reported missing; a block passed to `parse`/`config_for` runs once.
+
+## Developer
+
+  - Appraisal (psych 3/4 gemfiles) dropped; CI runs Ruby 3.3, 3.4, 4.0 and head.
+  - All GitHub Actions pinned to a commit SHA and updated.
+  - Specs: `sample` helper for table-driven specs (`spec/support/samples.rb`).
+  - `bin/console` has `reload!`.
 
 ## [0.6.0] - 2025-04-10
 
