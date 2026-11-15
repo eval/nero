@@ -14,6 +14,13 @@ module Nero
       end
 
       def resolve(args, context:)
+        valid = args.is_a?(Array) && args.any? && args.all? { _1.is_a?(String) || _1.is_a?(Symbol) }
+        unless valid
+          context.add_error("!credentials expects a key or a sequence of keys " \
+            "(!credentials [aws, secret]), got #{args.inspect}")
+          return
+        end
+
         keys = args.map(&:to_sym)
         value = credentials.dig(*keys)
         return value unless value.nil?

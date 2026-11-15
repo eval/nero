@@ -620,6 +620,13 @@ RSpec.describe Nero do
         - people
     Y
 
+    ## wrong shapes report, never raise
+    #
+    sample "result: !format {fmt: 'Hi %<n>s', n: 1}", Nero::ParseError, /got a mapping \(the 0.6 map form/
+    sample "result: !format", Nero::ParseError, /string template as first item, got nil/
+    sample "result: !format [1, 2]", Nero::ParseError, /string template as first item, got 1/
+    sample "result: !format ['%d', ~]", Nero::ParseError, /format error: can't convert nil into Integer/
+
     # This does *not* complain about missing format arguments
     sample <<~Y, Nero::ParseError, /environment variable PLANET is not set/
       result: !str/format

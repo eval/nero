@@ -69,6 +69,15 @@ RSpec.describe "Nero::Rails" do
       expect(Nero.load("val: !credentials nonexistent", environ: {"NERO_ALL_OPTIONAL" => "1"}))
         .to eq("val" => nil)
     end
+
+    describe "wrong shapes report, never raise" do
+      samples { |yaml| Nero.load("val: !credentials #{yaml}", environ: {}) }
+
+      # Hash#inspect: `{"aws"=>"secret"}` on Ruby 3.3, `{"aws" => "secret"}` from 3.4.
+      sample "{aws: secret}", Nero::ParseError, /expects a key or a sequence of keys.*got \{"aws" ?=> ?"secret"\}/
+      sample "", Nero::ParseError, /expects a key or a sequence of keys.*got \[\]/
+      sample "[aws, 1]", Nero::ParseError, /got \["aws", 1\]/
+    end
   end
 
   describe "!path/rails_root" do
