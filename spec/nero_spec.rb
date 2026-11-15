@@ -556,6 +556,20 @@ RSpec.describe Nero do
   end
 
   describe "custom tags" do
+    context "args a scalar tag receives" do
+      samples do |value|
+        Nero.load("a: !echo #{value}", environ: {}) { |p| p.add_tag("echo", ->(args, **) { args }) }["a"]
+      end
+
+      sample "", []
+      sample %(""), [""]
+      sample "''", [""]
+      sample "foo", ["foo"]
+      sample "123", [123]
+      sample %("123"), ["123"]
+      sample "~", [nil]
+    end
+
     let(:rot_tag_class) do
       Class.new(Nero::BaseTag) do
         def initialize(n:)
@@ -682,5 +696,35 @@ RSpec.describe Nero do
         }.to raise_error(Nero::ParseError, /\.nonexistent/)
       end
     end
+  end
+
+  describe "!path/git_root arguments" do
+    around do |ex|
+      Dir.mktmpdir do |tmp|
+        @root = Pathname(File.realpath(tmp))
+        FileUtils.mkdir(@root / ".git")
+        FileUtils.mkdir(@root / "config")
+        ex.run
+      end
+    end
+
+    # The resolved path relative to the root ("." is the root itself).
+    samples do |value|
+      file = @root / "config/app.yml"
+      file.write("a: !path/git_root #{value}")
+      Nero.load_file(file, environ: {"TENANT" => "acme"})["a"].relative_path_from(@root).to_s
+    end
+
+    sample "", "."
+    sample %(""), "."
+    sample "config/app.yml", "config/app.yml"
+    sample "[config, app.yml]", "config/app.yml"
+    sample "[storage, !env TENANT, 3]", "storage/acme/3"
+    sample %([storage, ""]), "storage"
+    sample "[storage, !env? NOPE]", Nero::ParseError, /segment 2 is nil/
+    sample "/etc", Nero::ParseError, /segment 1 \("\/etc"\) is absolute/
+    sample "[config, /etc]", Nero::ParseError, /segment 2 .* is absolute/
+    sample "{x: 1}", Nero::ParseError, /got a mapping/
+    sample "[[a, b]]", Nero::ParseError, /segment 1 must be a string, got Array/
   end
 end

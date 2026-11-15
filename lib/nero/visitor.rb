@@ -17,7 +17,13 @@ module Nero
       return super unless handler
 
       o.tag = nil
-      handler.resolve([super], context: @nero_ctx)
+      # A bare tag (`a: !tag`) has no args. A quoted scalar stays a string: with an explicit
+      # tag Psych doesn't mark it quoted, so `!tag "123"` would become 123 and `!tag ""` nil.
+      args = case o.style
+      when ::Psych::Nodes::Scalar::SINGLE_QUOTED, ::Psych::Nodes::Scalar::DOUBLE_QUOTED then [o.value]
+      else o.value.empty? ? [] : [super]
+      end
+      handler.resolve(args, context: @nero_ctx)
     end
 
     def visit_Psych_Nodes_Sequence(o)
