@@ -8,13 +8,16 @@ Gem::Specification.new do |spec|
   spec.authors = ["Gert Goet"]
   spec.email = ["gert@thinkcreate.dk"]
 
-  spec.summary = "Convenience YAML-tags"
+  spec.summary = "Declarative YAML-tags"
 
   spec.description = <<~DESC
-    Some convenient YAML-tags...
-    - to get environment values: env, env?, env/integer, env/integer?, env/bool, env/bool?.
-    - to create a Pathname (!path) or URI (!uri)
-    - format a string: !str/format
+    Declarative YAML-tags for config files, all errors reported at once:
+    - environment values: !env, !env?, coerced via !env/integer, !env/float, !env/bool, !env/path (optional: !env?/integer etc.)
+    - references within the file: !ref
+    - formatted strings: !format
+    - paths below the project root: !path/git_root (and !path/rails_root)
+    - Rails: !credentials, !duration, !str/inquirer, Nero.config_for
+    - custom tags via a block
 
     See README for examples.
   DESC
