@@ -40,7 +40,8 @@ Total refactor and so quite some breaking changes.
 
 ## Security
 
-  - YAML can no longer instantiate arbitrary Ruby objects (`!ruby/object:...`). Like `YAML.load`, `Nero.parse`/`parse_file` only allow `Symbol`; `Nero.config_for` also allows `Date` and `Time` (unlike Rails' `config_for`, which uses `YAML.unsafe_load`). Anything else is a parse error; allow more with `permitted_classes:`, e.g. `Nero.parse(yaml, permitted_classes: %w[Symbol Date])`. Aliases (anchors) stay allowed.
+  - MFA required to publish this gem.
+  - YAML can no longer instantiate arbitrary Ruby objects (`!ruby/object:...`). Like `YAML.load`, `Nero.load`/`load_file` only allow `Symbol`; `Nero.config_for` also allows `Date` and `Time` (unlike Rails' `config_for`, which uses `YAML.unsafe_load`). Anything else is a parse error; allow more with `permitted_classes:`, e.g. `Nero.load(yaml, permitted_classes: %w[Symbol Date])`. Aliases (anchors) stay allowed.
 
 ## Features
 
