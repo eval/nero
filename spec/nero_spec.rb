@@ -227,6 +227,21 @@ RSpec.describe Nero do
       expect(Nero.load(yaml, root: :production)).to eq("host" => "localhost", "port" => 3000, "debug" => false)
     end
 
+    # issue 13
+    context "correct handling of anchors and aliases" do
+      samples { Nero.load(<<~YAML, environ: {"A" => "5"})["b"] }
+        a: &x #{_1}
+        b: *x
+        c:
+          d: 4
+      YAML
+      sample "!env/integer A", 5
+      sample "!ip 10.0.0.0/8", IPAddr.new("10.0.0.0/8")
+      sample "!env/int [A, 2]", 5
+      sample "!ref c.d", 4
+      sample "!format [ 'Hello %<foo>s', {foo: !env A}]", "Hello 5"
+    end
+
     it "resolves tags in anchored sections merged into the selected root" do
       yaml = <<~Y
         shared: &shared

@@ -25,7 +25,7 @@ module Nero
       when ::Psych::Nodes::Scalar::SINGLE_QUOTED, ::Psych::Nodes::Scalar::DOUBLE_QUOTED then [o.value]
       else o.value.empty? ? [] : [super]
       end
-      handler.resolve(args, context: @nero_ctx)
+      register(o, handler.resolve(args, context: @nero_ctx))
     end
 
     def visit_Psych_Nodes_Sequence(o)
@@ -34,7 +34,7 @@ module Nero
 
       o.tag = nil
       args = super
-      contains_ref?(args) ? Deferred.new(handler, args) : handler.resolve(args, context: @nero_ctx)
+      register(o, contains_ref?(args) ? Deferred.new(handler, args) : handler.resolve(args, context: @nero_ctx))
     end
 
     def visit_Psych_Nodes_Mapping(o)
@@ -43,7 +43,7 @@ module Nero
 
       o.tag = nil
       args = super
-      contains_ref?(args) ? Deferred.new(handler, args) : handler.resolve(args, context: @nero_ctx)
+      register(o, contains_ref?(args) ? Deferred.new(handler, args) : handler.resolve(args, context: @nero_ctx))
     end
 
     private
