@@ -45,6 +45,9 @@ Total refactor and so quite some breaking changes. See [UPGRADING.md](UPGRADING.
 
 ## Features
 
+  - `!env/list` / `!env?/list`: a comma-separated env value as an Array (`a.com, b.com` → `["a.com", "b.com"]`); the fallback can be a sequence: `!env/list [HOSTS, [localhost]]`.
+  - `!env/ip` / `!env?/ip`: an env value as `IPAddr` (address or CIDR range).
+
   - `!ip`: an `IPAddr` from an address or CIDR range (`!ip 10.0.0.0/8`); a sequence of one nests a tag (`!ip [!env ADMIN_IP]`). Invalid addresses are a parse error.
 
   - `NERO_ALL_OPTIONAL` (formerly `NERO_ENV_ALL_OPTIONAL`) also covers Rails `!credentials`: a missing env var or credential resolves to its fallback or `nil` instead of an error. Handy for tasks that boot the app without its config, e.g. `rails assets:precompile` or `rails credentials:edit`. Also available as a parser option: `Nero.load(yaml, all_optional: true)`. Only a non-empty value switches it on (`NERO_ALL_OPTIONAL=` is off). `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.

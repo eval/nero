@@ -253,6 +253,32 @@ RSpec.describe Nero do
     sample "x", Nero::ParseError
   end
 
+  describe "!env/list" do
+    samples { |(yaml, environ)| Nero.load("a: #{yaml}", environ: environ || {})["a"] }
+
+    sample ["!env/list HOSTS", {"HOSTS" => "a.com, b.com,,c.com "}], %w[a.com b.com c.com]
+    sample ["!env/list HOSTS", {"HOSTS" => "a.com"}], %w[a.com]
+    sample ["!env/list HOSTS", {"HOSTS" => ""}], []
+    sample ["!env/list [HOSTS, \"x, y\"]"], %w[x y]
+    sample ["!env/list [HOSTS, [x, 1]]"], %w[x 1]
+    sample ["!env?/list HOSTS"], nil
+    sample ["!env/list HOSTS"], Nero::ParseError, /HOSTS is not set/
+  end
+
+  describe "!env/ip" do
+    samples { |(yaml, environ)| Nero.load("a: #{yaml}", environ: environ || {})["a"] }
+
+    sample ["!env/ip IP", {"IP" => "10.0.0.0/8"}], IPAddr.new("10.0.0.0/8")
+    sample ["!env/ip [IP, 127.0.0.1]"], IPAddr.new("127.0.0.1")
+    sample ["!env?/ip IP"], nil
+    sample ["!env/ip IP", {"IP" => "nope"}], Nero::ParseError, /cannot coerce IP="nope": not a valid IP address/
+  end
+
+  it "a sequence fallback is only passed as is to coercing tags" do
+    expect(Nero.load("a: !env [X, [x]]", environ: {})).to eq("a" => '["x"]')
+    expect { Nero.load("a: !env/integer [X, [1]]", environ: {}) }.to raise_error(Nero::ParseError, /cannot coerce X=\[1\]/)
+  end
+
   describe "!env/bool" do
     samples { Nero.load("a: !env/bool FOO", environ: {"FOO" => _1})["a"] }
 

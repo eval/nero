@@ -15,6 +15,13 @@ module Nero
       raise ArgumentError, "Can't coerce #{v.inspect} to boolean. Acceptable values: #{(BOOL_YES + BOOL_NO).join("/")}"
     end
     TO_PATH = ->(v) { Pathname.new(v) }
+    TO_IP = ->(v) do
+      IPAddr.new(v)
+    rescue IPAddr::Error
+      raise ArgumentError, "not a valid IP address or CIDR range"
+    end
+    # "a, b,,c" → ["a", "b", "c"]; a fallback sequence ([a, b]) is used as is.
+    TO_LIST = ->(v) { v.is_a?(Array) ? v.map(&:to_s) : v.split(",").map(&:strip).reject(&:empty?) }
 
     # Classes YAML may instantiate, as YAML.load allows by default.
     PERMITTED_CLASSES = %w[Symbol].freeze
@@ -63,6 +70,10 @@ module Nero
       add_tag("env/path?", EnvTag.new(coerce: TO_PATH, optional: true,
         deprecated: ["!env/path? is deprecated", use: "!env?/path", removed_in: "0.8"]))
       add_tag("env?/path", EnvTag.new(coerce: TO_PATH, optional: true))
+      add_tag("env/ip", EnvTag.new(coerce: TO_IP))
+      add_tag("env?/ip", EnvTag.new(coerce: TO_IP, optional: true))
+      add_tag("env/list", EnvTag.new(coerce: TO_LIST))
+      add_tag("env?/list", EnvTag.new(coerce: TO_LIST, optional: true))
       add_tag("str/format", FormatTag.new)
       add_tag("format", FormatTag.new)
       add_tag("ref", RefTag.new)

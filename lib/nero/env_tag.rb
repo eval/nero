@@ -29,13 +29,15 @@ module Nero
         return
       end
 
-      value = raw || default.to_s
+      # A fallback is a string like an env value. For coercing tags a sequence is passed as is,
+      # so !env/list [X, [a, b]] works (other coercions report it as an error).
+      value = raw || ((default.is_a?(Array) && @coerce) ? default : default.to_s)
 
       return value unless @coerce
 
       begin
         @coerce.call(value)
-      rescue ArgumentError => e
+      rescue ArgumentError, TypeError => e
         context.add_error("cannot coerce #{var_name}=#{value.inspect}: #{e.message}")
         nil
       end

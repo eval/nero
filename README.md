@@ -136,13 +136,19 @@ Deprecated usage (e.g. `!ref [a, b]`) still works and prints a warning on stderr
   secret: !env? SECRET
   ```
 - `!env/<type> KEY`, `!env?/<type> KEY`  
-  Coerce env-values: `env/<type>` is required, `env?/<type>` optional (`nil` when not provided). The types are `integer` (or `int`), `float`, `bool` (or `boolean`) and `path` (a [Pathname](https://rubyapi.org/3.4/o/pathname)):
+  Coerce env-values: `env/<type>` is required, `env?/<type>` optional (`nil` when not provided). The types are `integer` (or `int`), `float`, `bool` (or `boolean`), `path` (a [Pathname](https://rubyapi.org/3.4/o/pathname)), `ip` (an [IPAddr](https://rubyapi.org/3.4/o/ipaddr), see `!ip`) and `list`:
   ```yaml
   port: !env/integer [PORT, 3000]
   threads: !env?/integer THREADS # nil when not provided
   threshold: !env/float CUTOFF
   log_dir: !env/path [LOG_DIR, log]
+  admin_ip: !env?/ip ADMIN_IP
   ```
+  - lists split on commas and strip whitespace (`a.com, b.com` → `["a.com", "b.com"]`, empty → `[]`). The fallback can be a string or a sequence:
+    ```yaml
+    allowed_hosts: !env/list [ALLOWED_HOSTS, [localhost, 127.0.0.1]]
+    cors_origins: !env?/list CORS_ORIGINS
+    ```
   - bools accept `1/y/yes/true/on` and `0/n/no/false/off` (case-insensitive); anything else is an error:
     ```yaml
     # required
