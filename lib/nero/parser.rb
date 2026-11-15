@@ -140,9 +140,8 @@ module Nero
 
       mapping.children.each_slice(2) do |key_node, val_node|
         next if key_node.value == @root
-        next if used_anchors.include?(val_node.anchor)
 
-        strip_custom_tags(val_node)
+        strip_custom_tags(val_node, keep: used_anchors)
       end
     end
 
@@ -155,13 +154,18 @@ module Nero
       result
     end
 
-    def strip_custom_tags(node)
+    # Clears Nero tags below an inactive root, so e.g. `!env SECRET` under `production:` doesn't
+    # error when loading `development`. A node the active root aliases (`&anchor`, at any
+    # depth) keeps its tags: the alias needs them resolved.
+    def strip_custom_tags(node, keep:)
+      return if node.respond_to?(:anchor) && keep.include?(node.anchor)
+
       case node
       when ::Psych::Nodes::Scalar, ::Psych::Nodes::Sequence, ::Psych::Nodes::Mapping
         node.tag = nil if node.tag&.start_with?("!")
       end
       return unless node.respond_to?(:children) && node.children
-      node.children.each { |child| strip_custom_tags(child) }
+      node.children.each { |child| strip_custom_tags(child, keep:) }
     end
 
     def contains_ref?(value)

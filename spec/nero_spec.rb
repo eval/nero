@@ -227,6 +227,39 @@ RSpec.describe Nero do
       expect(Nero.load(yaml, root: :production)).to eq("host" => "localhost", "port" => 3000, "debug" => false)
     end
 
+    describe "anchors nested in another root" do
+      # The anchor sits below `development`, not on it: the alias must still get the tags.
+      let(:yaml) do
+        <<~Y
+          development:
+            proxies: &proxies
+              - !ip 10.0.0.0/8
+            limits: &limits
+              max: !env/integer [MAX, 3]
+            secret: !env SECRET
+            unused: &unused !env UNUSED
+          production:
+            proxies: *proxies
+            limits: *limits
+        Y
+      end
+
+      it "resolves tags inside nested anchored nodes aliased by the selected root" do
+        result = Nero.load(yaml, root: :production, environ: {})
+        expect(result).to eq("proxies" => [IPAddr.new("10.0.0.0/8")], "limits" => {"max" => 3})
+      end
+
+      it "still strips the tags the selected root doesn't alias" do
+        # Neither `secret` nor `unused` errors for a missing env var.
+        expect { Nero.load(yaml, root: :production, environ: {}) }.not_to raise_error
+      end
+
+      it "leaves the anchoring root itself alone" do
+        expect { Nero.load(yaml, root: :development, environ: {}) }
+          .to raise_error(Nero::ParseError, /SECRET.*\n?.*UNUSED|UNUSED.*\n?.*SECRET/m)
+      end
+    end
+
     # issue 13
     context "correct handling of anchors and aliases" do
       samples { Nero.load(<<~YAML, environ: {"A" => "5"})["b"] }
