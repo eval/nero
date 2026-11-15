@@ -23,18 +23,23 @@ production:
   max_threads: !env/integer [MAX_THREADS, 5]
 
   # refer to other keys
-  min_threads: !env/integer [MIN_THREADS, !ref max_threads ]
+  min_threads: !env/integer [MIN_THREADS, !ref max_threads]
+
+  # build strings
+  database_url: !format ["postgres://%s/app", !env DB_HOST]
 
   # descriptive names
-  asset_folder: !path/rails_root [ public/assets ]
+  asset_folder: !path/rails_root public/assets
 
-  # easy to add custom tags
+  # Rails: durations, credentials
   cache_ttl: !duration [2, hours]
+  api_key: !credentials [stripe, api_key]
 ```
 
 ## Highlights
 
 * 💎 declarative YAML-tags for e.g. requiring and coercing env-vars
+* 🧾 all problems reported at once, not just the first
 * 🛠️ add custom tags
 * 🛤️ `Rails.application.config_for` drop-in
 * ♻️ no dependencies
@@ -45,16 +50,6 @@ Install the gem and add to the application's Gemfile by executing:
 
 ```bash
 bundle add nero
-```
-
-## Configuration
-
-```ruby
-parser = Nero::Parser.new do |config|
-  config.add_tag("str/upcase", ->(args, **) { args.join.upcase })
-end
-parser.parse("hello: !str/upcase world")
-# => #<Nero::Result:0x00000001239f8de0 @errors=[], @value={"hello" => "WORLD"}>
 ```
 
 ## Usage
@@ -70,7 +65,7 @@ Given the following config:
 development:
   # env-var with a fallback
   secret: !env [SECRET, "dummy"]
-  # Though the default is false, explicitly providing "false"/"off"/"n"/"no" also works.
+  # nil when DEBUG is not set
   debug?: !env?/bool DEBUG
 production:
   # fail-fast on absence of SECRET
@@ -93,7 +88,7 @@ Nero.load_file("config/app.yml", root: :development)
 # Loading production
 Nero.load_file("config/app.yml", root: :production)
 # ...and no ENV-vars were provided
-# raises Nero::ParseError: environment variable SECRET is not set, ...
+# raises Nero::ParseError: environment variable SECRET is not set
 
 # ...with ENV {"SECRET" => "s3cr3t", "MAX_THREADS" => "3"}
 #=> {"secret" => "s3cr3t", "max_threads" => 3}
@@ -106,28 +101,33 @@ Nero's entry points behave like their namesakes:
 | `Nero.load(yaml)`, `Nero.load_file(path)` | `YAML.load`, `YAML.load_file` | strings (`symbolize_names: true` for symbols) | `Symbol` |
 | `Nero.config_for(:app, env:)` | `Rails.application.config_for` | symbols | `Symbol`, `Date`, `Time` |
 
-Differences from `YAML.load`: aliases (anchors) are allowed, and all problems are reported at once in a `Nero::ParseError` (see `#errors`). Allow more classes with `permitted_classes:`. Arbitrary objects (`!ruby/object:...`) are refused by default, also in `config_for` (Rails' `config_for` uses `YAML.unsafe_load`).
+Differences from `YAML.load`: aliases (anchors) are allowed, and all problems are reported at once in a `Nero::ParseError` (see `#errors`). Allow more classes with `permitted_classes:` (this replaces the default list, as in Psych). Arbitrary objects (`!ruby/object:...`) are refused by default, also in `config_for` (Rails' `config_for` uses `YAML.unsafe_load`).
 
 ```ruby
-# config/settings.yml, relative to the current directory (in Rails, env defaults to Rails.env)
-Nero.config_for(:settings, env: :production)
+# config/app.yml, relative to the current directory (in Rails: Rails.root/config)
+Nero.config_for(:app, env: :production)
 #=> {secret: "s3cr3t", max_threads: 3}
+
+# Pass the env-vars to use (default: ENV), e.g. in specs
+Nero.load_file("config/app.yml", root: :production, environ: {"SECRET" => "s3cr3t"})
+#=> {"secret" => "s3cr3t", "max_threads" => 5}
 
 # Without raising: a Result with value, errors and warnings
 result = Nero::Parser.new(root: :production).parse_file("config/app.yml")
 result.ok? #=> false
 result.errors.map(&:message) #=> ["environment variable SECRET is not set"]
+result.value! # raises Nero::ParseError
 ```
+
+Deprecated usage (e.g. `!ref [a, b]`) still works and prints a warning on stderr, like `[nero] DEPRECATION WARNING: ...`. `Nero::Parser` doesn't print: see `Result#warnings`.
 
 [API Documentation](https://eval.github.io/nero/).
 
 ### built-in tags
 
-The following tags are provided:
 - `!env KEY`, `!env? KEY`  
   Resp. to fetch or get a value from `ENV`:
   ```yaml
-  ---
   # required
   secret: !env SECRET
   # optional, with fallback:
@@ -135,12 +135,14 @@ The following tags are provided:
   # ...or nil
   secret: !env? SECRET
   ```
-- to coerce env-values: `env/<type>` (required) and `env?/<type>` (optional, `nil` when not provided), for the types `integer` (or `int`), `float`, `bool` (or `boolean`) and `path`:
-    ```yaml
-    port: !env/integer [PORT, 3000]
-    threads: !env?/integer THREADS # nil when not provided
-    threshold: !env/float CUTOFF
-    ```
+- `!env/<type> KEY`, `!env?/<type> KEY`  
+  Coerce env-values: `env/<type>` is required, `env?/<type>` optional (`nil` when not provided). The types are `integer` (or `int`), `float`, `bool` (or `boolean`) and `path` (a [Pathname](https://rubyapi.org/3.4/o/pathname)):
+  ```yaml
+  port: !env/integer [PORT, 3000]
+  threads: !env?/integer THREADS # nil when not provided
+  threshold: !env/float CUTOFF
+  log_dir: !env/path [LOG_DIR, log]
+  ```
   - bools accept `1/y/yes/true/on` and `0/n/no/false/off` (case-insensitive); anything else is an error:
     ```yaml
     # required
@@ -151,41 +153,42 @@ The following tags are provided:
     debug?: !env?/bool DEBUG
     ```
   - The names `env/integer?` etc. (with the `?` at the end) still work, with a deprecation warning, until 0.8.
-> [!TIP]  
-> Set `NERO_ALL_OPTIONAL` to make every env var (and, with Rails, every `!credentials` key) optional: missing values become their fallback or `nil` instead of an error. For tasks that boot the app without needing its config:
-> ```shell
-> $ NERO_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails assets:precompile
-> $ NERO_ALL_OPTIONAL=1 rails credentials:edit --environment production
-> ```
-> Or per call: `Nero.load(yaml, all_optional: true)`. The old name `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
-- `!path/git_root`, `!path/rails_root` (the latter with Rails)  
-  Create a [Pathname](https://rubyapi.org/3.4/o/pathname) relative to some root-path.  
-  The root-path is expected to be an existing ancestor folder of the yaml-config being parsed.  
-  It's found by traversing up and checking for the presence of specific files/folders, e.g. '.git' (`!path/git_root`) or 'config.ru' (`!path/rails_root`).  
-  While the root-path needs to exist, the resulting Pathname doesn't need to.
+
+  > [!TIP]  
+  > Set `NERO_ALL_OPTIONAL` to make every env var (and, with Rails, every `!credentials` key) optional: missing values become their fallback or `nil` instead of an error. For tasks that boot the app without needing its config:
+  > ```shell
+  > $ NERO_ALL_OPTIONAL=1 SECRET_KEY_BASE_DUMMY=1 rails assets:precompile
+  > $ NERO_ALL_OPTIONAL=1 rails credentials:edit --environment production
+  > ```
+  > Or per call: `Nero.load(yaml, all_optional: true)`. The old name `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
+- `!path/git_root`  
+  Create a [Pathname](https://rubyapi.org/3.4/o/pathname) relative to the root of the project: the nearest ancestor folder of the yaml-config that contains `.git`.  
+  While the root needs to exist, the resulting Pathname doesn't need to.
   ```yaml
   project_root: !path/git_root
-  config_file: !path/rails_root config/app.yml
+  schema: !path/git_root db/schema.rb
   # segments are joined, so other tags can provide them:
-  uploads: !path/rails_root [storage, !env [TENANT, default]]
+  uploads: !path/git_root [storage, !env [TENANT, default]]
   ```
-  Segments are relative to the root: a missing (`nil`) or absolute segment is an error.
-- `!str/format`  
+  Segments are relative to the root: a missing (`nil`) or absolute segment is an error.  
+  With Rails there's also `!path/rails_root` (see [Rails](#rails)).
+- `!format` (or `!str/format`)  
   Using Ruby's [format specifications](https://docs.ruby-lang.org/en/master/language/format_specifications_rdoc.html):
   ```yaml
   # template + positional arguments
-  smtp_url: !str/format
+  smtp_url: !format
     - smtps://%s:%s@smtp.gmail.com
     - !env SMTP_USER
     - !env SMTP_PASS
-  
-  # template + hash argument
-  smtp_url: !str/format
+
+  # template + named arguments
+  smtp_url: !format
     - smtps://%<user>s:%<pass>s@smtp.gmail.com
     - user: !env SMTP_USER
       pass: !env SMTP_PASS
-  # as oneliner (the arguments are [tpl, {planet: ...}, {demonyms: ...}])
-  foo: !str/format [Hello %<demonyms>s on %<planet>s!, planet: Earth, demonyms: people]
+
+  # as oneliner
+  greeting: !format [Hello %<demonyms>s on %<planet>s!, planet: Earth, demonyms: people]
   ```
 - `!ref`  
   Include values from elsewhere:
@@ -193,97 +196,132 @@ The following tags are provided:
   # simple
   min_threads: !env/integer [MIN_THREADS, !ref max_threads]
   max_threads: 5
-  
+
   # oauth_callback -refs-> base.url -refs-> base.host
   base:
     host: !env HOST
-    url: !str/format [https://%s, !ref base.host]
-  oauth_callback: !str/format
+    url: !format [https://%s, !ref base.host]
+  oauth_callback: !format
     - '%s/oauth/callback'
     - !ref base.url
-
-  # refs are resolved within the tree of the selected root.
-  # The following config won't work when doing `Nero.load_file("config/app.yml", root: :prod)`
+  ```
+  Paths are relative to the selected root, and must exist (`unknown ref ...` otherwise). So with `root: :prod` this doesn't work:
+  ```yaml
   dev:
     max_threads: 5
   prod:
-    max_threads: !env [MAX_THREADS, !ref dev.max_threads]
+    max_threads: !env/integer [MAX_THREADS, !ref dev.max_threads]
   ```
-  NOTE future version should raise properly over ref-ing a non-existing path.
+  Use an anchor instead (`max_threads: &max_threads 5` and `*max_threads`).  
+  The form `!ref [base, url]` still works, with a deprecation warning, until 0.8.
+
+### Rails
+
+In a Rails app (when Nero is required after Rails, as Bundler does) `nero/rails` is loaded. Elsewhere: `require "nero/rails"`. This makes `Nero.config_for` look in `Rails.root/config` with `env:` defaulting to `Rails.env`:
+
+```ruby
+# config/application.rb
+config.x.app = Nero.config_for(:app)
+```
+
+...and adds these tags:
+
+- `!credentials`  
+  A value from `Rails.application.credentials`. For nested keys, use a sequence:
+  ```yaml
+  secret_key_base: !credentials secret_key_base
+  stripe_key: !credentials [stripe, api_key]
+  ```
+  A missing credential is an error (`nil` with `NERO_ALL_OPTIONAL`).
+- `!path/rails_root`  
+  Like `!path/git_root`, with the folder containing `config.ru` as root:
+  ```yaml
+  asset_folder: !path/rails_root public/assets
+  ```
+- `!duration`  
+  An `ActiveSupport::Duration` from an amount and a unit (`seconds`, `minutes`, `hours`, `days`, `weeks`, `months` or `years`):
+  ```yaml
+  cache_ttl: !duration [2, hours]
+  session_timeout: !duration [!env/integer [SESSION_MINUTES, 30], minutes]
+  ```
+- `!str/inquirer`  
+  An `ActiveSupport::StringInquirer`, like `Rails.env`:
+  ```yaml
+  stage: !str/inquirer [!env [STAGE, beta]]
+  # config[:stage].beta? #=> true
+  ```
 
 ### custom tags
 
+Pass a block to `Nero.load`, `Nero.load_file`, `Nero.config_for` or `Nero::Parser.new` and register tags with `add_tag(name, tag)`. Built-in tags with the same name are replaced.
+
+A tag is anything that responds to `resolve(args, context:)`:
+- `args` is what follows the tag in YAML: an Array for a scalar or sequence, a Hash for a mapping. Nested tags (`!env` etc.) are already resolved.
+- `context` gives access to `environ` (the env-vars), `dir` (the folder of the yaml-config) and `add_error(message)`.
+
 There's three ways to create your own tags.
 
-For all these methods it's helpful to see the API-docs for [Nero::BaseTag](https://eval.github.io/nero/Nero/BaseTag.html).
-
-1. **a proc**
+1. **a lambda**
     ```ruby
-    Nero.configure do |nero|
-      nero.add_tag("upcase") do |args, context:|
+    Nero.load_file("config/app.yml") do |nero|
+      nero.add_tag("upcase", ->(args, context:) {
         # In YAML args are provided as scalar, seq or map:
-        # ---
-        # k: !upcase bar
-        # ---
-        # k: !upcase [bar] # equivalent to:
-        # k: !upcase
-        #   - bar
-        # ---
-        # k: !upcase
-        #   bar: baz
-        #
+        #   k: !upcase bar         # args: ["bar"]          => "BAR"
+        #   k: !upcase [foo, bar]  # args: ["foo", "bar"]   => "FOO BAR"
+        #   k: !upcase             # args: {"bar" => "baz"} => {"bar" => "BAZ"}
+        #     bar: baz             #   (keys are strings, or symbols with config_for)
         case args
-        when Hash
-          args.each_with_object({}) {|(k,v), acc| acc[k] = v.upcase }
-        else
-          args.map(&:upcase)
+        when Hash then args.transform_values(&:upcase)
+        else args.join(" ").upcase
         end
-
-        # NOTE though a tag might just need one argument (ie scalar),
-        # it's helpful to accept a seq as it allows for chaining:
-        # a: !my/inc 4 # scalar suffices
-        # ...but when chaining, it needs to be a seq:
-        # a: !my/inc [ !my/square 2 ]
-      end
+      })
     end
     ```
-    Blocks are passed instances of [Nero::BaseTag](https://eval.github.io/nero/Nero/BaseTag.html).
-1. **re-use existing tag-class**  
-   You can add an existing tag under a better fitting name this way.  
-   Also: some tag-classes have options that allow for simple customizations (like `coerce` below):
+    Though a tag might just need one argument (ie scalar), it's helpful to accept a seq as it allows for nesting:
+    ```yaml
+    a: !upcase foo               # scalar suffices
+    b: !upcase [!env [FOO, foo]] # ...but nesting a tag needs a seq
+    ```
+1. **re-use an existing tag-class**  
+   Add an existing tag under a better fitting name, or use its options for simple customizations:
     ```ruby
-    Nero.configure do |nero|
+    Nero.load_file("config/app.yml") do |nero|
       # Alias for path/git_root:
       nero.add_tag("path/project_root", Nero::RootPathTag.new(containing: ".git"))
+      # env-tag with custom coercion:
+      nero.add_tag("env/upcase", Nero::EnvTag.new(coerce: ->(value) { value.upcase }))
+      nero.add_tag("env?/upcase", Nero::EnvTag.new(coerce: ->(value) { value.upcase }, optional: true))
     end
     ```
 1. **custom class**  
    ```ruby
    class RotTag < Nero::BaseTag
-     # Configure:
-     # ```
-     # config.add_tag("rot/12", RotTag.new(12))
-     # config.add_tag("rot/10", RotTag.new(10))
-     # ```
-     #
-     # Usage in YAML:
-     # ```
-     # secret: !rot/12 some message
-     # very_secret: !rot/10 [ !env [ MSG, some message ] ]
-     # ```
-     # => {secret: "EAyq yqEEmsq", very_secret: "Cywo woCCkqo)"}
+     CHARS = [*"a".."z", *"A".."Z", *"0".."9"].join
 
-     def chars
-       @chars ||= (('a'..'z').to_a + ('A'..'Z').to_a + ('0'..'9').to_a)
+     def initialize(n)
+       @n = n
      end
 
+     # Usage in YAML:
+     #   secret: !rot/12 some message
+     #   very_secret: !rot/10 [!env [MSG, some message]]
      def resolve(args, context:)
-       # Here we actually do the work: get the args, rotate strings and delegate to the block.
-       # `args` are the resolved nested args (so e.g. `!env MSG` is already resolved).
+       unless args.is_a?(Array) && args.all?(String)
+         # Report problems instead of raising: they end up in Nero::ParseError with all other problems.
+         context.add_error("!rot expects one or more strings, got #{args.inspect}")
+         return
+       end
+
        # String#tr replaces any character from the first collection with the same position in the other:
-       args.join.tr(chars.join, chars.rotate(@n).join)
+       args.join.tr(CHARS, CHARS.chars.rotate(@n).join)
      end
    end
+
+   Nero.load_file("config/app.yml") do |nero|
+     nero.add_tag("rot/12", RotTag.new(12))
+     nero.add_tag("rot/10", RotTag.new(10))
+   end
+   #=> {"secret" => "EAyq yqEEmsq", "very_secret" => "Cywo woCCkqo"}
    ```
 
 ## Development
@@ -300,9 +338,9 @@ Using [mise](https://mise.jdx.dev/) for env-vars is recommended.
 
 ### Releasing
 
-1. Update `lib/bonchi/version.rb`
+1. Update `lib/nero/version.rb`
    ```
-   bin/rake 'gem:write_version[0.5.0]'
+   bin/rake 'gem:write_version[0.7.0]'
    # commit&push
    # check CI
    ```
@@ -315,7 +353,7 @@ Using [mise](https://mise.jdx.dev/) for env-vars is recommended.
    - ...creates git GitHub release after successful publish
 1. Update `version.rb` for next dev-cycle
    ```
-   bin/rake 'gem:write_version[0.6.0.dev]'
+   bin/rake 'gem:write_version[0.8.0.dev]'
    ```
 
 ## Contributing
