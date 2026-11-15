@@ -60,7 +60,7 @@ parser.parse("hello: !str/upcase world")
 ## Usage
 
 > [!WARNING]  
-> It's early days - the API and included tags will certainly change. Check the CHANGELOG when upgrading.
+> It's early days - the API and included tags will certainly change. Check the CHANGELOG when upgrading, and [UPGRADING.md](UPGRADING.md) when coming from 0.6.
 
 ### loading a config
 
