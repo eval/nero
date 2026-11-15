@@ -11,12 +11,12 @@ module Nero
 
         unless amount.is_a?(Numeric)
           context.add_error("duration requires a numeric amount, got #{amount.inspect}")
-          return nil
+          return
         end
 
         unless UNITS.include?(unit)
           context.add_error("duration unknown unit #{unit.inspect}, expected one of: #{UNITS.join(", ")}")
-          return nil
+          return
         end
 
         amount.public_send(unit)

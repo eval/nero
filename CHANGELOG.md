@@ -13,6 +13,7 @@ Total refactor and so quite some breaking changes. See [UPGRADING.md](UPGRADING.
 ## Breaking Changes
 
   - **`Nero.load` / `Nero.load_file` now return string keys**, like `YAML.load` (0.6: symbol keys). `Nero.load(...)[:foo]` silently gives `nil`: use `symbolize_names: true`, or `Nero.config_for` (symbol keys, like Rails). They raise `Nero::ParseError` with all errors at once; `Nero::Parser#parse`/`#parse_file` return a `Result` instead.
+  - **Unknown tags are a parse error.** A tag Nero doesn't know used to pass through silently: Psych treats an unknown local tag as no tag at all, so a typo (`!env/intger PORT` → `"PORT"`), a custom tag that isn't registered (`!str/upcsae foo` → `"foo"`) or Psych's shorthands (`!ruby/sym`, `!str:Foo`, `!binary`) gave a plain value and no error. Now every `!tag` must be built in or registered; YAML core tags (`!!str`, `!!binary`, `!!set`, ...) work as before. The error suggests similar names: `unknown tag !env/intger (maybe you meant: !env/integer, !env/int)`.
   - Nero.configure / Nero.configuration removed — custom tags are now registered via a block passed to parse/parse_file/config_for:
 ```ruby
   # Before

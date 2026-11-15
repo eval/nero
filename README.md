@@ -108,7 +108,7 @@ Nero's entry points behave like their namesakes:
 | `Nero.load(yaml)`, `Nero.load_file(path)` | `YAML.load`, `YAML.load_file` | strings (`symbolize_names: true` for symbols) | `Symbol` |
 | `Nero.config_for(:app, env:)` | `Rails.application.config_for` | symbols | `Symbol`, `Date`, `Time` |
 
-Differences from `YAML.load`: aliases (anchors) are allowed, and all problems are reported at once in a `Nero::ParseError` (see `#errors`). Allow more classes with `permitted_classes:` (this replaces the default list, as in Psych). Arbitrary objects (`!ruby/object:...`) are refused by default, also in `config_for` (Rails' `config_for` uses `YAML.unsafe_load`).
+Differences from `YAML.load`: aliases (anchors) are allowed, all problems are reported at once in a `Nero::ParseError` (see `#errors`), and a tag Nero doesn't know is an error instead of being ignored (`unknown tag !env/intger (maybe you meant: !env/integer, !env/int)`). Allow more classes with `permitted_classes:` (this replaces the default list, as in Psych). Arbitrary objects (`!ruby/object:...`) are refused by default, also in `config_for` (Rails' `config_for` uses `YAML.unsafe_load`).
 
 ```ruby
 # config/app.yml, relative to the current directory (in Rails: Rails.root/config)
@@ -280,6 +280,8 @@ config.x.app = Nero.config_for(:app)
 ### custom tags
 
 Pass a block to `Nero.load`, `Nero.load_file`, `Nero.config_for` or `Nero::Parser.new` and register tags with `add_tag(name, tag)`. Built-in tags with the same name are replaced.
+
+Any other `!tag` is a parse error (`unknown tag !str/fromat`): a typo or a tag you forgot to register never silently passes through as a plain value. YAML's own `!!str`, `!!binary` etc. are fine; Psych's `!ruby/...` shorthands are not supported.
 
 A tag is anything that responds to `resolve(args, context:)`:
 - `args` is what follows the tag in YAML: an Array for a scalar or sequence, a Hash for a mapping. Nested tags (`!env` etc.) are already resolved.

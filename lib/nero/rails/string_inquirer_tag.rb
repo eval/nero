@@ -7,7 +7,7 @@ module Nero
         value = args[0]&.to_s
         if value.nil? || value.empty?
           context.add_error("str/inquirer requires a non-empty string argument")
-          return nil
+          return
         end
         ActiveSupport::StringInquirer.new(value)
       end

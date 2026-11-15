@@ -179,12 +179,12 @@ module Nero
         key = value.path.join(".")
         if visited.include?(key)
           ctx.add_error("circular reference: #{key}")
-          return nil
+          return
         end
         target = value.path.reduce(root) { |h, k| h.is_a?(Hash) ? h[key(k)] : nil }
         if target.nil?
           ctx.add_error("unknown ref #{key}")
-          return nil
+          return
         end
         resolve_refs(target, root, ctx, visited | [key])
       when Deferred

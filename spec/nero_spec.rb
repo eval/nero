@@ -9,6 +9,31 @@ RSpec.describe Nero do
   let(:parser) { Nero::Parser.new(environ: {}) }
 
   describe ".parse" do
+    context "unknown tags" do
+      samples { parser.parse(_1).errors.map { |e| e.message[/unknown tag \S+/] }.compact }
+
+      sample "foo: !sttr typo", ["unknown tag !sttr"]
+      sample "foo: !sttr [ 1, 2 ]", ["unknown tag !sttr"]
+      sample "foo: !sttr { a: 1 }", ["unknown tag !sttr"]
+      sample <<~Y, ["unknown tag !sttr"] # alias/anchor reports just once
+        foo: &x !sttr 1
+        bar: *x
+      Y
+      sample "foo: !!str some", []
+      sample "foo: !ruby/range typo", ["unknown tag !ruby/range"]
+
+      it "offers non-deprecated suggestions" do
+        error_msgs = parser.parse("port: !env/intger PORT").errors.map(&:message)
+        expect(error_msgs).to include(match(%r{!env/integer, !env/int, !env\?/integer}))
+      end
+
+      it "keeps parsing: the plain value lands and later errors are still collected" do
+        result = parser.parse("a: !sttr x\nb: !env MISSING\nc: 1")
+        expect(result.value).to eq("a" => "x", "b" => nil, "c" => 1)
+        expect(result.errors.map(&:message)).to include(/unknown tag !sttr/, /MISSING is not set/)
+      end
+    end
+
     it "returns value directly like Psych" do
       expect(Nero.load("foo: bar\nnum: 42")).to eq("foo" => "bar", "num" => 42)
     end
@@ -386,7 +411,7 @@ RSpec.describe Nero do
     it "reports a disallowed class as an error on the Result" do
       result = parser.parse("a: !ruby/object:Object {}")
       expect(result).not_to be_ok
-      expect(result.errors.first.message).to match(/permitted_classes/)
+      expect(result.errors.map(&:message)).to include(match(/permitted_classes/))
     end
 
     describe "Nero.config_for: also Date and Time" do

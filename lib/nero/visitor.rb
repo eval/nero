@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "did_you_mean"
+
 module Nero
   class Visitor < ::Psych::Visitors::ToRuby
     # Like YAML.load (safe_load): only `permitted_classes` (class names or classes) can be
@@ -47,8 +49,16 @@ module Nero
     private
 
     def find_nero_tag(tag)
-      return nil unless tag&.start_with?("!")
-      @nero_tags[tag[1..]]
+      return unless tag&.start_with?("!") # filter out untagged and core tags (e.g. !!str that arrive as tag:yaml.org,2002:str
+      tag_name = tag[1..]
+
+      @nero_tags.fetch(tag_name) do
+        dictionary = @nero_tags.reject { |_, t| t.respond_to?(:deprecated?) && t.deprecated? }.keys
+        suggestions = DidYouMean::SpellChecker.new(dictionary:).correct(tag_name)
+        hint = suggestions.empty? ? "" : " (maybe you meant: #{suggestions.map { "!#{_1}" }.join(", ")})"
+        @nero_ctx.add_error("unknown tag #{tag}#{hint}")
+        nil
+      end
     end
 
     def contains_ref?(value)

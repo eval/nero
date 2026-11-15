@@ -3,6 +3,9 @@
 0.7 is a rewrite. Most changes fail loudly (a `NoMethodError` or a `Nero::ParseError` at
 boot), but a few change values **silently**. Those come first.
 
+One thing that was silent is now loud: a tag Nero doesn't know is a parse error (see
+[Custom tags](#7-custom-tags)). In 0.6 a typo or an unregistered tag gave a plain value.
+
 Deprecated usage keeps working until 0.8 and prints a warning on stderr:
 
 ```
@@ -20,7 +23,7 @@ Run your app or test suite once after upgrading and fix every warning.
 - [ ] [Configuration](#4-neroconfigure-is-gone): no more `Nero.configure`
 - [ ] [`load_config`](#5-load_config-is-gone) → `config_for`
 - [ ] [Tags](#6-tags): `!ref`, `!str/format`, optional env tags, `!path`, `!uri`
-- [ ] [Custom tags](#7-custom-tags): new API
+- [ ] [Custom tags](#7-custom-tags): new API; every `!tag` must be built in or registered
 - [ ] [Loading Ruby objects](#8-loading-ruby-objects): `extra_permitted_classes:` → `permitted_classes:`
 - [ ] [`NERO_ENV_ALL_OPTIONAL`](#9-nero_env_all_optional) → `NERO_ALL_OPTIONAL`
 
@@ -164,6 +167,14 @@ Rails also `!credentials`, `!duration` and `!str/inquirer`.
 
 ## 7. Custom tags
 
+**Unregistered tags are errors.** 0.6 passed a tag it didn't know on to Psych, which
+treats an unknown local tag as no tag: `!upcsae foo` quietly gave `"foo"`,
+`!secret foo` the string `"foo"`. 0.7 reports `unknown tag !upcsae` instead, with a
+suggestion when a built-in name is close (`unknown tag !env/intger (maybe you meant:
+!env/integer, !env/int)`). So a custom tag you forget to register, or register on one code
+path but not another (an initializer that reloads the config without the block), now fails
+at boot instead of changing values.
+
 Tags no longer read `tag.args`/`coder`/`ctx`. A tag is anything that responds to
 `resolve(args, context:)`.
 
@@ -238,6 +249,10 @@ Nero.load(yaml, permitted_classes: %w[Symbol Date])
 ```
 
 Aliases (`&anchor`/`*alias`, `<<:` merge keys) work as before.
+
+Psych's shorthand tags (`!ruby/sym`, `!ruby/range`, `!ruby/regexp`, `!str:Foo`, `!seq:Foo`,
+`!binary`, `!float`, `!omap`, `!set`) are unknown tags in 0.7. Write symbols as `:foo`, and
+use the YAML core form for the rest: `!!binary`, `!!float`, `!!omap`, `!!set`.
 
 ## 9. `NERO_ENV_ALL_OPTIONAL`
 
