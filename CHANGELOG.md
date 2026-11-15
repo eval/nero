@@ -45,6 +45,8 @@ Total refactor and so quite some breaking changes. See [UPGRADING.md](UPGRADING.
 
 ## Features
 
+  - `!ip`: an `IPAddr` from an address or CIDR range (`!ip 10.0.0.0/8`); a sequence of one nests a tag (`!ip [!env ADMIN_IP]`). Invalid addresses are a parse error.
+
   - `NERO_ALL_OPTIONAL` (formerly `NERO_ENV_ALL_OPTIONAL`) also covers Rails `!credentials`: a missing env var or credential resolves to its fallback or `nil` instead of an error. Handy for tasks that boot the app without its config, e.g. `rails assets:precompile` or `rails credentials:edit`. Also available as a parser option: `Nero.load(yaml, all_optional: true)`. Only a non-empty value switches it on (`NERO_ALL_OPTIONAL=` is off). `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
 
   - `Nero.parse` / `Nero.parse_file` (0.7.0 release candidates) are deprecated aliases of `Nero.load` / `Nero.load_file`; removed in 0.8.

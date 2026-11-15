@@ -15,6 +15,7 @@ Gem::Specification.new do |spec|
     - environment values: !env, !env?, coerced via !env/integer, !env/float, !env/bool, !env/path (optional: !env?/integer etc.)
     - references within the file: !ref
     - formatted strings: !format
+    - IP addresses and ranges: !ip
     - paths below the project root: !path/git_root (and !path/rails_root)
     - Rails: !credentials, !duration, !str/inquirer, Nero.config_for
     - custom tags via a block
