@@ -158,32 +158,18 @@ The following tags are provided:
 > $ NERO_ALL_OPTIONAL=1 rails credentials:edit --environment production
 > ```
 > Or per call: `Nero.load(yaml, all_optional: true)`. The old name `NERO_ENV_ALL_OPTIONAL` still works, with a deprecation warning, until 0.8.
-- `!path`  
-  Create a [Pathname](https://rubyapi.org/3.4/o/pathname):
-  ```yaml
-  config: !path config
-  # combining tags:
-  asset_folder: !path
-    - !env PROJECT_ROOT
-    - /public/assets
-  ```
-- `!path/git_root`, `!path/rails_root`  
-  Create a Pathname relative to some root-path.  
+- `!path/git_root`, `!path/rails_root` (the latter with Rails)  
+  Create a [Pathname](https://rubyapi.org/3.4/o/pathname) relative to some root-path.  
   The root-path is expected to be an existing ancestor folder of the yaml-config being parsed.  
   It's found by traversing up and checking for the presence of specific files/folders, e.g. '.git' (`!path/git_root`) or 'config.ru' (`!path/rails_root`).  
   While the root-path needs to exist, the resulting Pathname doesn't need to.
   ```yaml
   project_root: !path/git_root
-  config_folder: !path/rails_root [ config ]
+  config_file: !path/rails_root config/app.yml
+  # segments are joined, so other tags can provide them:
+  uploads: !path/rails_root [storage, !env [TENANT, default]]
   ```
-- `!uri`  
-  Create a [URI](https://rubyapi.org/3.4/o/uri):
-  ```yaml
-  smtp_url: !uri
-    - smtps://
-    - !env SMTP_CREDS
-    - @smtp.gmail.com
-  ```
+  Segments are relative to the root: a missing (`nil`) or absolute segment is an error.
 - `!str/format`  
   Using Ruby's [format specifications](https://docs.ruby-lang.org/en/master/language/format_specifications_rdoc.html):
   ```yaml
