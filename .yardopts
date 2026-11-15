@@ -1,4 +1,5 @@
 --template-path yard/templates
+--asset assets
 --readme README.md
 --title 'Nero Documentation'
 --charset utf-8

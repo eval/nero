@@ -1,4 +1,6 @@
-# 🔥 Nero 
+<p align="center">
+  <img src="assets/banner.svg" alt="Nero: declarative YAML-tags" width="100%">
+</p>
 
 [![Gem Version](https://badge.fury.io/rb/nero.svg)](https://badge.fury.io/rb/nero)
 

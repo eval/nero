@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 380" width="1280" height="380" role="img" aria-labelledby="title desc">
+  <title id="title">Nero</title>
+  <desc id="desc">A flame in a golden laurel wreath next to the name Nero, declarative YAML-tags, and a sample config using !env, !env/integer and !ip.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d1410"/>
+      <stop offset="0.55" stop-color="#2a1711"/>
+      <stop offset="1" stop-color="#3b1a10"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="200" cy="200" r="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8a2a" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd76e"/>
+      <stop offset="0.45" stop-color="#ff8a1f"/>
+      <stop offset="1" stop-color="#e2381b"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6cf"/>
+      <stop offset="1" stop-color="#ffbe45"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3c65d"/>
+      <stop offset="1" stop-color="#b8862b"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="380" rx="20" fill="url(#bg)"/>
+  <circle cx="200" cy="200" r="190" fill="url(#glow)"/>
+
+  <!-- laurel wreath -->
+  <polyline points="158.0,295.8 146.9,290.6 136.4,284.2 126.7,276.7 117.8,268.1 110.0,258.6 103.2,248.3 97.6,237.4 93.2,225.9 90.2,213.9 88.4,201.8 88.0,189.5 89.0,177.2 91.3,165.1 94.9,153.3 99.8,142.0 105.9,131.3 113.1,121.4 121.4,112.3 130.6,104.1 140.6,97.0" fill="none" stroke="#b8862b" stroke-width="3" stroke-linecap="round"/>
+  <polyline points="242.0,295.8 253.1,290.6 263.6,284.2 273.3,276.7 282.2,268.1 290.0,258.6 296.8,248.3 302.4,237.4 306.8,225.9 309.8,213.9 311.6,201.8 312.0,189.5 311.0,177.2 308.7,165.1 305.1,153.3 300.2,142.0 294.1,131.3 286.9,121.4 278.6,112.3 269.4,104.1 259.4,97.0" fill="none" stroke="#b8862b" stroke-width="3" stroke-linecap="round"/>
+  <g fill="url(#gold)">
+    <ellipse cx="161.4" cy="287.5" rx="17.0" ry="6.5" transform="rotate(74.0 161.4 287.5)"/>
+    <ellipse cx="154.7" cy="304.2" rx="17.0" ry="6.5" transform="rotate(26.0 154.7 304.2)"/>
+    <ellipse cx="139.3" cy="275.6" rx="16.3" ry="6.2" transform="rotate(88.0 139.3 275.6)"/>
+    <ellipse cx="129.1" cy="289.6" rx="16.3" ry="6.2" transform="rotate(40.0 129.1 289.6)"/>
+    <ellipse cx="120.6" cy="258.7" rx="15.7" ry="6.0" transform="rotate(102.0 120.6 258.7)"/>
+    <ellipse cx="107.8" cy="269.3" rx="15.7" ry="6.0" transform="rotate(54.0 107.8 269.3)"/>
+    <ellipse cx="106.5" cy="237.6" rx="15.0" ry="5.7" transform="rotate(116.0 106.5 237.6)"/>
+    <ellipse cx="92.2" cy="244.6" rx="15.0" ry="5.7" transform="rotate(68.0 92.2 244.6)"/>
+    <ellipse cx="97.9" cy="213.7" rx="14.4" ry="5.5" transform="rotate(130.0 97.9 213.7)"/>
+    <ellipse cx="83.0" cy="216.9" rx="14.4" ry="5.5" transform="rotate(82.0 83.0 216.9)"/>
+    <ellipse cx="95.3" cy="188.3" rx="13.7" ry="5.2" transform="rotate(144.0 95.3 188.3)"/>
+    <ellipse cx="80.8" cy="187.8" rx="13.7" ry="5.2" transform="rotate(96.0 80.8 187.8)"/>
+    <ellipse cx="99.0" cy="163.0" rx="13.0" ry="5.0" transform="rotate(158.0 99.0 163.0)"/>
+    <ellipse cx="85.7" cy="159.2" rx="13.0" ry="5.0" transform="rotate(110.0 85.7 159.2)"/>
+    <ellipse cx="108.7" cy="139.3" rx="12.4" ry="4.7" transform="rotate(172.0 108.7 139.3)"/>
+    <ellipse cx="97.3" cy="132.7" rx="12.4" ry="4.7" transform="rotate(124.0 97.3 132.7)"/>
+    <ellipse cx="123.9" cy="118.5" rx="11.7" ry="4.5" transform="rotate(186.0 123.9 118.5)"/>
+    <ellipse cx="115.0" cy="109.9" rx="11.7" ry="4.5" transform="rotate(138.0 115.0 109.9)"/>
+    <ellipse cx="143.7" cy="102.0" rx="11.1" ry="4.2" transform="rotate(200.0 143.7 102.0)"/>
+    <ellipse cx="137.5" cy="92.1" rx="11.1" ry="4.2" transform="rotate(152.0 137.5 92.1)"/>
+    <ellipse cx="238.6" cy="287.5" rx="17.0" ry="6.5" transform="rotate(106.0 238.6 287.5)"/>
+    <ellipse cx="245.3" cy="304.2" rx="17.0" ry="6.5" transform="rotate(154.0 245.3 304.2)"/>
+    <ellipse cx="260.7" cy="275.6" rx="16.3" ry="6.2" transform="rotate(92.0 260.7 275.6)"/>
+    <ellipse cx="270.9" cy="289.6" rx="16.3" ry="6.2" transform="rotate(140.0 270.9 289.6)"/>
+    <ellipse cx="279.4" cy="258.7" rx="15.7" ry="6.0" transform="rotate(78.0 279.4 258.7)"/>
+    <ellipse cx="292.2" cy="269.3" rx="15.7" ry="6.0" transform="rotate(126.0 292.2 269.3)"/>
+    <ellipse cx="293.5" cy="237.6" rx="15.0" ry="5.7" transform="rotate(64.0 293.5 237.6)"/>
+    <ellipse cx="307.8" cy="244.6" rx="15.0" ry="5.7" transform="rotate(112.0 307.8 244.6)"/>
+    <ellipse cx="302.1" cy="213.7" rx="14.4" ry="5.5" transform="rotate(50.0 302.1 213.7)"/>
+    <ellipse cx="317.0" cy="216.9" rx="14.4" ry="5.5" transform="rotate(98.0 317.0 216.9)"/>
+    <ellipse cx="304.7" cy="188.3" rx="13.7" ry="5.2" transform="rotate(36.0 304.7 188.3)"/>
+    <ellipse cx="319.2" cy="187.8" rx="13.7" ry="5.2" transform="rotate(84.0 319.2 187.8)"/>
+    <ellipse cx="301.0" cy="163.0" rx="13.0" ry="5.0" transform="rotate(22.0 301.0 163.0)"/>
+    <ellipse cx="314.3" cy="159.2" rx="13.0" ry="5.0" transform="rotate(70.0 314.3 159.2)"/>
+    <ellipse cx="291.3" cy="139.3" rx="12.4" ry="4.7" transform="rotate(8.0 291.3 139.3)"/>
+    <ellipse cx="302.7" cy="132.7" rx="12.4" ry="4.7" transform="rotate(56.0 302.7 132.7)"/>
+    <ellipse cx="276.1" cy="118.5" rx="11.7" ry="4.5" transform="rotate(-6.0 276.1 118.5)"/>
+    <ellipse cx="285.0" cy="109.9" rx="11.7" ry="4.5" transform="rotate(42.0 285.0 109.9)"/>
+    <ellipse cx="256.3" cy="102.0" rx="11.1" ry="4.2" transform="rotate(-20.0 256.3 102.0)"/>
+    <ellipse cx="262.5" cy="92.1" rx="11.1" ry="4.2" transform="rotate(28.0 262.5 92.1)"/>
+  </g>
+
+  <!-- flame -->
+  <path fill="url(#flame)" d="M 200 96 C 236 138, 266 172, 262 220 C 258 262, 232 288, 200 288 C 168 288, 142 262, 140 222 C 138 186, 156 160, 172 138 C 174 168, 184 186, 196 192 C 188 160, 186 128, 200 96 Z"/>
+  <path fill="url(#core)" d="M 202 174 C 222 200, 236 218, 232 244 C 229 266, 216 276, 200 276 C 184 276, 170 264, 170 244 C 170 226, 180 214, 188 204 C 190 218, 196 226, 204 228 C 198 210, 196 192, 202 174 Z"/>
+
+  <!-- sparks -->
+  <g fill="#ffb347">
+    <circle cx="214" cy="74" r="3.5" opacity="0.9"/>
+    <circle cx="188" cy="60" r="2.5" opacity="0.7"/>
+    <circle cx="224" cy="44" r="2" opacity="0.6"/>
+    <circle cx="196" cy="30" r="1.6" opacity="0.5"/>
+  </g>
+
+  <!-- name and tagline -->
+  <text x="350" y="200" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="124" font-weight="700" fill="#fbeee0" letter-spacing="2">Nero</text>
+  <text x="354" y="252" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="30" fill="#f0b98a">Declarative YAML-tags</text>
+  <text x="354" y="290" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#b89480">env-vars, coercion, refs and more</text>
+
+  <!-- sample config -->
+  <g transform="translate(728 78)">
+    <rect width="516" height="226" rx="14" fill="#120c09" fill-opacity="0.75" stroke="#4a2f22"/>
+    <circle cx="26" cy="24" r="6" fill="#e2381b"/>
+    <circle cx="46" cy="24" r="6" fill="#ff8a1f"/>
+    <circle cx="66" cy="24" r="6" fill="#ffd76e"/>
+    <text x="100" y="29" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'JetBrains Mono', monospace" font-size="15" fill="#8a6c5c">config/app.yml</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'JetBrains Mono', monospace" font-size="21" xml:space="preserve">
+      <text x="26" y="80" fill="#f4e6d8">production:</text>
+      <text x="26" y="116" fill="#f4e6d8">  secret: <tspan fill="#ff9a3c">!env</tspan> SECRET</text>
+      <text x="26" y="152" fill="#f4e6d8">  port:   <tspan fill="#ff9a3c">!env/integer</tspan> [PORT, 3000]</text>
+      <text x="26" y="188" fill="#f4e6d8">  admins: <tspan fill="#ff9a3c">!ip</tspan> 10.0.0.0/8</text>
+    </g>
+  </g>
+</svg>
