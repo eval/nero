@@ -8,7 +8,7 @@ Changes can be:
 
 ## [Unreleased]
 
-Total refactor and so quite some breaking changes.
+Total refactor and so quite some breaking changes. See [UPGRADING.md](UPGRADING.md) for a step-by-step guide from 0.6.
 
 ## Breaking Changes
 

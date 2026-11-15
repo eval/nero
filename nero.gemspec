@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
     Nero 0.7 has breaking changes. Most notably:
     Nero.load / Nero.load_file now return STRING keys, like YAML.load.
     Use symbolize_names: true, or Nero.config_for (symbol keys, like Rails).
-    Upgrade notes: https://github.com/eval/nero/blob/main/CHANGELOG.md
+    Upgrade guide: https://github.com/eval/nero/blob/main/UPGRADING.md
   MSG
 
   # spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
