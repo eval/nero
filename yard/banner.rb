@@ -99,11 +99,12 @@ svg = <<~SVG
       <circle cx="46" cy="24" r="6" fill="#ff8a1f"/>
       <circle cx="66" cy="24" r="6" fill="#ffd76e"/>
       <text x="100" y="29" font-family="#{mono}" font-size="15" fill="#8a6c5c">config/app.yml</text>
-      <g font-family="#{mono}" font-size="21" xml:space="preserve">
-        <text x="26" y="80" fill="#f4e6d8">production:</text>
-        <text x="26" y="116" fill="#f4e6d8">  secret: <tspan fill="#ff9a3c">!env</tspan> SECRET</text>
-        <text x="26" y="152" fill="#f4e6d8">  port:   <tspan fill="#ff9a3c">!env/integer</tspan> [PORT, 3000]</text>
-        <text x="26" y="188" fill="#f4e6d8">  admins: <tspan fill="#ff9a3c">!ip</tspan> 10.0.0.0/8</text>
+      <!-- Indentation by x (2 characters of 0.6em), not by spaces: browsers collapse leading spaces. -->
+      <g font-family="#{mono}" font-size="21" fill="#f4e6d8">
+        <text x="26" y="80">production:</text>
+        <text x="51" y="116">secret: <tspan fill="#ff9a3c">!env</tspan> SECRET</text>
+        <text x="51" y="152">port: <tspan fill="#ff9a3c">!env/integer</tspan> [PORT, 3000]</text>
+        <text x="51" y="188">admins: <tspan fill="#ff9a3c">!ip</tspan> 10.0.0.0/8</text>
       </g>
     </g>
   </svg>
