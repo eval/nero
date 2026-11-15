@@ -1,0 +1,206 @@
+/*
+ * Dark theme for YARD's default template. Active when js/theme.js sets
+ * <html data-theme="dark"> (the OS setting, or the reader's choice).
+ * Only colors are overridden; the layout stays YARD's.
+ */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16181d;
+  --surface: #1e2229;
+  --surface-2: #262b33;
+  --surface-hover: #2f3540;
+  --border: #3a414c;
+  --text: #d8dce2;
+  --muted: #9aa3ae;
+  --faint: #6f7884;
+  --link: #6cb6ff;
+  --link-hover: #9ccfff;
+  --code-text: #e6e9ee;
+  --code-bg: #1b1f26;
+}
+
+/* Toggle button (added by js/theme.js) */
+#theme-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  padding: 6px 10px;
+  font: 12px/1.2 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #333;
+  background: #f8f8f8;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+#theme-toggle:hover { opacity: 1; }
+:root[data-theme="dark"] #theme-toggle { color: var(--text); background: var(--surface-2); border-color: var(--border); }
+
+/* Page */
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] #main { color: var(--text); background: var(--bg); }
+:root[data-theme="dark"] #nav { background: var(--bg); border-color: var(--border); box-shadow: none; }
+:root[data-theme="dark"] h1 { border-top-color: var(--border); }
+:root[data-theme="dark"] h2 { border-bottom-color: var(--border); }
+:root[data-theme="dark"] h2 small a { background: var(--surface-2); border-color: var(--border); }
+:root[data-theme="dark"] #content a,
+:root[data-theme="dark"] #content a:visited { color: var(--link); }
+:root[data-theme="dark"] #content a:hover { color: var(--link-hover); background: var(--surface-hover); }
+
+/* Header: breadcrumbs and the class/method/file list buttons */
+:root[data-theme="dark"] #menu,
+:root[data-theme="dark"] #menu .title { color: var(--muted); }
+:root[data-theme="dark"] #menu a,
+:root[data-theme="dark"] #menu a:visited { color: var(--text); border-bottom-color: var(--border); }
+:root[data-theme="dark"] #menu a:hover { color: var(--link); }
+:root[data-theme="dark"] #search a { color: var(--link); background: var(--surface-2); border-color: var(--border); box-shadow: none; }
+:root[data-theme="dark"] #search a:hover { color: var(--link-hover); background: var(--surface-hover); }
+:root[data-theme="dark"] #search a.active { color: #fff; background: #3d5a80; border-color: #4a6a94; }
+:root[data-theme="dark"] #search a.inactive { color: var(--faint); }
+
+/* Footer, table of contents */
+:root[data-theme="dark"] #footer { color: var(--faint); border-top-color: var(--border); }
+:root[data-theme="dark"] #footer a,
+:root[data-theme="dark"] #footer a:visited { color: var(--muted); border-bottom-color: var(--border); }
+:root[data-theme="dark"] #footer a:hover { color: var(--link); }
+:root[data-theme="dark"] #toc,
+:root[data-theme="dark"] #toc.hidden { background: var(--surface); border-color: var(--border); box-shadow: none; }
+:root[data-theme="dark"] #toc.hidden:hover { background: var(--surface-2); }
+
+/* Inline code and code blocks */
+:root[data-theme="dark"] *:not(pre) > code { color: var(--code-text); background: var(--surface-2); border-color: var(--border); }
+:root[data-theme="dark"] .docstring p > code,
+:root[data-theme="dark"] .docstring p > tt,
+:root[data-theme="dark"] .tags p > code,
+:root[data-theme="dark"] .tags p > tt { color: #ff8fab; background: #2e2328; }
+:root[data-theme="dark"] .docstring pre.code,
+:root[data-theme="dark"] #filecontents pre.code,
+:root[data-theme="dark"] .tags pre.example { background: var(--code-bg); border-color: var(--border); }
+:root[data-theme="dark"] pre.code { color: var(--code-text); }
+:root[data-theme="dark"] pre.code a { border-bottom-color: var(--border); }
+:root[data-theme="dark"] .source_code { border-left-color: var(--border); }
+:root[data-theme="dark"] .source_code .lines,
+:root[data-theme="dark"] pre.code .info.file { color: var(--faint); }
+
+/* Syntax highlighting */
+:root[data-theme="dark"] pre.code .val,
+:root[data-theme="dark"] pre.code .tstring_content,
+:root[data-theme="dark"] pre.code .heredoc_beg,
+:root[data-theme="dark"] pre.code .heredoc_end,
+:root[data-theme="dark"] pre.code .tstring,
+:root[data-theme="dark"] pre.code .dstring,
+:root[data-theme="dark"] pre.code .regexp,
+:root[data-theme="dark"] pre.code .dregexp { color: #8ddb8c; }
+:root[data-theme="dark"] pre.code .comment { color: #8b949e; font-style: italic; }
+:root[data-theme="dark"] pre.code .const,
+:root[data-theme="dark"] pre.code .constant { color: #b4a7ff; }
+:root[data-theme="dark"] pre.code .label,
+:root[data-theme="dark"] pre.code .symbol { color: #ff9b8e; }
+:root[data-theme="dark"] pre.code .kw,
+:root[data-theme="dark"] pre.code .rubyid_require,
+:root[data-theme="dark"] pre.code .rubyid_extend,
+:root[data-theme="dark"] pre.code .rubyid_include { color: #ff7ab2; }
+:root[data-theme="dark"] pre.code .fid,
+:root[data-theme="dark"] pre.code .rubyid_new,
+:root[data-theme="dark"] pre.code .rubyid_to_s,
+:root[data-theme="dark"] pre.code .rubyid_to_sym,
+:root[data-theme="dark"] pre.code .rubyid_to_f,
+:root[data-theme="dark"] pre.code .rubyid_to_i,
+:root[data-theme="dark"] pre.code .rubyid_each { color: #6cb6ff; }
+:root[data-theme="dark"] pre.code .ivar { color: #56d4dd; }
+:root[data-theme="dark"] pre.code .gvar,
+:root[data-theme="dark"] pre.code .rubyid_backref,
+:root[data-theme="dark"] pre.code .rubyid_nth_ref { color: #a5b4fc; }
+:root[data-theme="dark"] #content .summary_desc pre.code .id > .object_link a,
+:root[data-theme="dark"] #content .docstring pre.code .id > .object_link a { color: #6cb6ff; }
+:root[data-theme="dark"] #content .summary_desc pre.code .const > .object_link a,
+:root[data-theme="dark"] #content .docstring pre.code .const > .object_link a { color: #b4a7ff; }
+
+/* Docstrings: links to objects, tables, definition lists */
+:root[data-theme="dark"] .summary_desc .object_link a,
+:root[data-theme="dark"] .docstring .object_link a { color: var(--link); background: #1d2b3a; }
+:root[data-theme="dark"] .docstring h1,
+:root[data-theme="dark"] .docstring h2,
+:root[data-theme="dark"] .docstring h3,
+:root[data-theme="dark"] .docstring h4 { border-bottom-color: var(--border); }
+:root[data-theme="dark"] .docstring table th,
+:root[data-theme="dark"] .docstring table td,
+:root[data-theme="dark"] #filecontents table th,
+:root[data-theme="dark"] #filecontents table td { border-color: var(--border); }
+:root[data-theme="dark"] .docstring table th,
+:root[data-theme="dark"] #filecontents table th,
+:root[data-theme="dark"] .docstring table tr:nth-child(even),
+:root[data-theme="dark"] #filecontents table tr:nth-child(even) { background: var(--bg); }
+:root[data-theme="dark"] .docstring table tr:nth-child(odd),
+:root[data-theme="dark"] #filecontents table tr:nth-child(odd) { background: var(--surface); }
+:root[data-theme="dark"] .docstring dl,
+:root[data-theme="dark"] #filecontents dl { border-color: var(--border); }
+:root[data-theme="dark"] .docstring dl dt,
+:root[data-theme="dark"] #filecontents dt { background: var(--surface-2); }
+
+/* Notes (deprecated, todo, ...) */
+:root[data-theme="dark"] .note { color: var(--text); border-color: var(--border); }
+:root[data-theme="dark"] .docstring .note { border-left-color: var(--border); }
+:root[data-theme="dark"] .note.returns_void,
+:root[data-theme="dark"] .note.title,
+:root[data-theme="dark"] .note.title.private { color: var(--text); background: var(--surface-2); border-color: var(--border); }
+:root[data-theme="dark"] .note.todo,
+:root[data-theme="dark"] .note.private { color: var(--text); background: #3a3520; border-color: #5a5230; }
+:root[data-theme="dark"] .note.deprecated,
+:root[data-theme="dark"] .note.title.deprecated { color: var(--text); background: #3d2326; border-color: #5c3438; }
+:root[data-theme="dark"] .note.title.not_defined_here { background: transparent; }
+
+/* Class/module info box, inheritance */
+:root[data-theme="dark"] .box_info dl dt,
+:root[data-theme="dark"] .box_info dl dd,
+:root[data-theme="dark"] .box_info dl:last-child > * { border-color: var(--border); }
+:root[data-theme="dark"] .box_info dl:nth-child(odd) > * { background: var(--surface); }
+:root[data-theme="dark"] .box_info dl:nth-child(even) > * { background: var(--bg); }
+:root[data-theme="dark"] .inheritanceTree,
+:root[data-theme="dark"] .toggleDefines { background: var(--surface); border-left-color: var(--border); }
+
+/* Method signatures and summaries */
+:root[data-theme="dark"] .method_details { border-top-color: var(--border); }
+:root[data-theme="dark"] p.signature,
+:root[data-theme="dark"] h3.signature,
+:root[data-theme="dark"] .tags .overload .overload_item .signature { color: var(--text); background: #1d2b3a; border-color: #2d3f54; }
+:root[data-theme="dark"] p.signature .extras,
+:root[data-theme="dark"] h3.signature .extras,
+:root[data-theme="dark"] p.signature .not_defined_here,
+:root[data-theme="dark"] h3.signature .not_defined_here,
+:root[data-theme="dark"] p.signature .aliases,
+:root[data-theme="dark"] h3.signature .aliases { color: var(--muted); }
+:root[data-theme="dark"] p.signature .aliases .names,
+:root[data-theme="dark"] h3.signature .aliases .names { color: var(--text); }
+:root[data-theme="dark"] .summary_signature { background: var(--surface); border-color: var(--surface-2); }
+:root[data-theme="dark"] .summary_signature:hover { background: #1d2b3a; border-color: #2d3f54; }
+:root[data-theme="dark"] .summary_signature.deprecated { background: #3d2326; border-color: #5c3438; }
+:root[data-theme="dark"] #content .summary_signature:hover a,
+:root[data-theme="dark"] #content .summary_signature:hover a:visited { color: var(--link-hover); background: transparent; }
+:root[data-theme="dark"] .showSource a,
+:root[data-theme="dark"] .showSource a:visited,
+:root[data-theme="dark"] #method_missing_details .notice.this,
+:root[data-theme="dark"] #listing ul small { color: var(--muted); }
+:root[data-theme="dark"] li.r1 { background: var(--surface); }
+:root[data-theme="dark"] li.r2 { background: var(--bg); }
+
+/* Class/method/file lists (side frame) */
+:root[data-theme="dark"] .fixed_header,
+:root[data-theme="dark"] #noresults { background: var(--bg); }
+:root[data-theme="dark"] #full_list li { color: var(--muted); }
+:root[data-theme="dark"] #full_list li.odd { background: var(--surface); }
+:root[data-theme="dark"] #full_list li.even { background: var(--bg); }
+:root[data-theme="dark"] #full_list .item:hover { background: var(--surface-hover); }
+:root[data-theme="dark"] #full_list li.clicked > .item { color: #fff; background: #2f5d8f; }
+:root[data-theme="dark"] #full_list li.clicked > .item a,
+:root[data-theme="dark"] #full_list li.clicked > .item a:visited { color: #fff; }
+:root[data-theme="dark"] a,
+:root[data-theme="dark"] a:visited { color: var(--link); }
+:root[data-theme="dark"] #search input { color: var(--text); background: var(--surface); border-color: var(--border); }
+:root[data-theme="dark"] #search { color: var(--muted); }
+:root[data-theme="dark"] #full_list_nav { color: var(--faint); }
+:root[data-theme="dark"] #full_list_nav a,
+:root[data-theme="dark"] #nav a:visited { color: var(--link); }
+:root[data-theme="dark"] #full_list_nav a:hover { color: var(--link-hover); background: transparent; }
