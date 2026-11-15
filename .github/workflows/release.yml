@@ -83,10 +83,13 @@ jobs:
           **Changelog**: https://github.com/eval/nero/blob/main/CHANGELOG.md#${version//./}
           EOF
 
+          # The release belongs to the tag that triggered this run (e.g. v0.7.0). A bare
+          # "$version" isn't a tag, and gh would create one on the default branch.
+          tag="${GITHUB_REF_NAME}"
           if [[ "$dot_count" -gt 2 ]]; then
-            gh release create "$version" --prerelease --generate-notes
+            gh release create "$tag" --verify-tag --title "$version" --prerelease --generate-notes
           else
-            gh release create "$version" --generate-notes --notes "$notes"
+            gh release create "$tag" --verify-tag --title "$version" --generate-notes --notes "$notes"
           fi
 
         env:
