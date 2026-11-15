@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
 
   spec.description = <<~DESC
     Declarative YAML-tags for config files, all errors reported at once:
-    - environment values: !env, !env?, coerced via !env/integer, !env/float, !env/bool, !env/path (optional: !env?/integer etc.)
+    - environment values: !env, !env?, coerced via !env/integer, !env/float, !env/bool, !env/path, !env/ip, !env/list (optional: !env?/integer etc.)
     - references within the file: !ref
     - formatted strings: !format
     - IP addresses and ranges: !ip
