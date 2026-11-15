@@ -52,6 +52,8 @@ Total refactor and so quite some breaking changes.
 
 ## Bug fixes
 
+  - `!path/git_root` / `!path/rails_root` join all segments again, as in 0.6 (`[config, app.yml]` → `<root>/config/app.yml`; the release candidates dropped all but the first), so other tags can fill in segments: `!path/rails_root [storage, !env TENANT]`. A `nil` segment (e.g. a missing `!env?`), an absolute segment, a mapping or a non-string is a parse error instead of silently resolving to the root (or crashing on a number).
+  - Tag arguments: a bare tag (`a: !my/tag`) passes no args (`[]`, was `[nil]`), and a quoted scalar stays a string (`!my/tag "123"` → `["123"]`, `!my/tag ""` → `[""]`; was `[123]` and `[nil]`).
   - `!env/integer` parses decimal only: `08` is `8` instead of an error (`Integer("08")` reads it as octal).
   - `!env` (and the coercing variants) without a variable name is a parse error instead of looking up `nil`.
   - `!ref [a, c]` resolved silently to `a` during the refactor; it resolves to `a.c` again.
