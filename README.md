@@ -2,7 +2,12 @@
   <img src="assets/banner.svg" alt="Nero: declarative YAML-tags" width="100%">
 </p>
 
-[![Gem Version](https://badge.fury.io/rb/nero.svg)](https://badge.fury.io/rb/nero)
+<p align="center">
+  <a href="https://badge.fury.io/rb/nero"><img src="https://badge.fury.io/rb/nero.svg" alt="Gem Version"></a>
+  <a href="https://eval.github.io/nero/"><img src="https://img.shields.io/badge/docs-API-ff9a3c" alt="API docs"></a>
+  <a href="https://rubygems.org/gems/nero"><img src="https://img.shields.io/gem/dt/nero" alt="Downloads"></a>
+  <a href="LICENSE.txt"><img src="https://img.shields.io/github/license/eval/nero" alt="License: MIT"></a>
+</p>
 
 Nero is a RubyGem that offers declarative YAML-tags to simplify config files, e.g. for requiring and coercion of env-vars.  
 Additionally, it allows you to create your own.
