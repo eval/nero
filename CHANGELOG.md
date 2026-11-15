@@ -30,6 +30,7 @@ Total refactor and so quite some breaking changes. See [UPGRADING.md](UPGRADING.
   - !uri and !path tags removed — !uri is gone entirely; !path is no longer a built-in.
   - `Nero::PathRootTag` renamed to `Nero::RootPathTag` with a new constructor API.
   - `!path/rails_root` is only available with Rails (`nero/rails`, loaded by the Railtie); `!path/git_root` stays built in.
+  - `!path/git_root` / `!path/rails_root` stay below the root: a path leading outside it (`!path/rails_root ..`, `[config, ../..]`) is a parse error. `..` within the root is fine, and the result is cleaned (`config/../lib` → `<root>/lib`). For a path outside the project, use `!env/path` or a custom tag.
   - `!secret_key_base` (0.7.0 release candidates only) removed. Read it in Ruby instead (`Rails.application.secret_key_base`, or better `Rails.application.key_generator.generate_key("purpose")`), or register it as a one-line custom tag.
   - !str/format changed — now also available as !format; the map form (fmt: key) is replaced by a sequence with named-parameter hashes: !format ["http://%<host>s", host: !ref host].
   - load_config removed (was already deprecated).

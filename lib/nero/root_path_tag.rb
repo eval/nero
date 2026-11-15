@@ -9,7 +9,9 @@ module Nero
   #   up: !path/git_root [storage, !env TENANT]  # segments, joined
   #
   # Segments are strings or numbers. A nil segment (e.g. a missing `!env?`), an absolute
-  # segment or a mapping is an error. The root must exist, the resulting path needn't.
+  # segment, a segment leading outside the root (`..`) or a mapping is an error. The
+  # result is cleaned (`config/../lib` → `lib`). The root must exist, the resulting path
+  # needn't.
   class RootPathTag < BaseTag
     def initialize(containing:)
       @containing = containing
@@ -22,7 +24,7 @@ module Nero
       segments = Array(args).map(&:to_s).reject(&:empty?)
       root = find_root(context) or return
 
-      segments.empty? ? root : root.join(*segments)
+      segments.empty? ? root : root.join(*segments).cleanpath
     end
 
     private
@@ -30,12 +32,16 @@ module Nero
     def invalid_args(args)
       return "expected a path or a sequence of path segments, got a mapping" if args.is_a?(Hash)
 
+      below_root = Pathname.new(".")
       Array(args).each.with_index(1) do |segment, i|
         case segment
         when nil
           return "segment #{i} is nil (use a fallback, e.g. !env [VAR, default])"
         when String, Numeric
           return "segment #{i} (#{segment.inspect}) is absolute; segments are relative to the root" if File.absolute_path?(segment.to_s)
+
+          below_root = (below_root + segment.to_s).cleanpath
+          return "segment #{i} (#{segment.inspect}) leads outside the root" if below_root.each_filename.first == ".."
         else
           return "segment #{i} must be a string, got #{segment.class}"
         end

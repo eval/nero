@@ -183,7 +183,7 @@ Deprecated usage (e.g. `!ref [a, b]`) still works and prints a warning on stderr
   # segments are joined, so other tags can provide them:
   uploads: !path/git_root [storage, !env [TENANT, default]]
   ```
-  Segments are relative to the root: a missing (`nil`) or absolute segment is an error.  
+  Segments are relative to the root: a missing (`nil`) or absolute segment is an error, and so is a path leading outside the root (`..`). The result is cleaned: `config/../lib` → `<root>/lib`.  
   With Rails there's also `!path/rails_root` (see [Rails](#rails)).
 - `!format` (or `!str/format`)  
   Using Ruby's [format specifications](https://docs.ruby-lang.org/en/master/language/format_specifications_rdoc.html):

@@ -157,7 +157,7 @@ Nero.config_for(:app, env: Rails.env)   # env: defaults to Rails.env in a Rails 
 | `!str/format {fmt: "%<x>s", x: 1}` | `!format ["%<x>s", x: 1]` | The map form with `fmt:` is gone. Positional args (`!format ["%s/x", !ref url]`) still work. `!str/format` stays as an alias. |
 | `!path [a, b]` | `!path/git_root [a, b]`, `!env/path VAR` | `!path` is gone: it built a path relative to the current directory. Use a root-relative path, or a path from the environment. |
 | `!uri [smtps://, !env CREDS, @host]` | `!format ["smtps://%s@host", !env CREDS]` | `!uri` is gone: it concatenated and parsed without escaping. Build the string, and call `URI()` in Ruby if you need an object. |
-| `!path/rails_root` | `!path/rails_root` | Now only available in a Rails app. `!path/git_root` works everywhere. |
+| `!path/rails_root` | `!path/rails_root` | Now only available in a Rails app. `!path/git_root` works everywhere. A path leading outside the root (`!path/rails_root ../shared`) is now an error: use `!env/path` for such a path. |
 
 New: `!env/int`, `!env/boolean` (aliases), `!env/path` and `!env?/path`, `!format`; with
 Rails also `!credentials`, `!duration` and `!str/inquirer`.

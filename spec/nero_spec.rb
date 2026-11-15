@@ -805,6 +805,15 @@ RSpec.describe Nero do
     sample "[storage, !env? NOPE]", Nero::ParseError, /segment 2 is nil/
     sample "/etc", Nero::ParseError, /segment 1 \("\/etc"\) is absolute/
     sample "[config, /etc]", Nero::ParseError, /segment 2 .* is absolute/
+    sample "./config/../lib", "lib"
+    sample "[config, .., lib]", "lib"
+    sample "[config, ../lib/.]", "lib"
+    sample "a//b/", "a/b"
+    sample "~/x", "~/x"
+    sample "..", Nero::ParseError, /segment 1 \(".."\) leads outside the root/
+    sample "config/../../x", Nero::ParseError, /segment 1 .* leads outside the root/
+    sample "[config, ../..]", Nero::ParseError, /segment 2 \("..\/.."\) leads outside the root/
+    sample "[.., nero]", Nero::ParseError, /segment 1 .* leads outside the root/
     sample "{x: 1}", Nero::ParseError, /got a mapping/
     sample "[[a, b]]", Nero::ParseError, /segment 1 must be a string, got Array/
   end
