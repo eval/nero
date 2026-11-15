@@ -190,6 +190,19 @@ Deprecated usage (e.g. `!ref [a, b]`) still works and prints a warning on stderr
   # as oneliner
   greeting: !format [Hello %<demonyms>s on %<planet>s!, planet: Earth, demonyms: people]
   ```
+- `!ip`  
+  An [IPAddr](https://rubyapi.org/3.4/o/ipaddr) from an address or CIDR range (IPv4 or IPv6):
+  ```yaml
+  admin: !ip 10.0.0.1
+  office: !ip 192.168.0.0/24
+  # a sequence of one, to nest a tag:
+  admin_ip: !ip [!env [ADMIN_IP, 127.0.0.1]]
+  # for several: a list with one !ip per item
+  trusted_proxies:
+    - !ip 173.245.48.0/20
+    - !ip 2400:cb00::/32
+  ```
+  Ranges answer `include?`: `config["office"].include?(request.remote_ip)`.
 - `!ref`  
   Include values from elsewhere:
   ```yaml

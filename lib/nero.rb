@@ -16,6 +16,7 @@ require_relative "nero/ref_tag"
 require_relative "nero/env_tag"
 require_relative "nero/root_path_tag"
 require_relative "nero/format_tag"
+require_relative "nero/ip_tag"
 require_relative "nero/visitor"
 require_relative "nero/parser"
 

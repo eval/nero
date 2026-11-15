@@ -383,6 +383,26 @@ RSpec.describe Nero do
     end
   end
 
+  describe "!ip" do
+    samples { |yaml| Nero.load("a: !ip #{yaml}", environ: {})["a"] }
+
+    sample "10.0.0.1", IPAddr.new("10.0.0.1")
+    sample "192.168.0.0/24", IPAddr.new("192.168.0.0/24")
+    sample "2400:cb00::/32", IPAddr.new("2400:cb00::/32")
+    sample "[!env [ADMIN_IP, 127.0.0.1]]", IPAddr.new("127.0.0.1")
+    sample "nope", Nero::ParseError, /"nope" is not a valid IP address/
+    sample "999.1.1.1", Nero::ParseError, /not a valid IP address/
+    sample "[1.2.3.4, 5.6.7.8]", Nero::ParseError, /one !ip per item/
+    sample "", Nero::ParseError, /expects one address/
+    sample "{x: 1}", Nero::ParseError, /expects one address/
+
+    it "a list has one !ip per item; ranges answer include?" do
+      proxies = Nero.load("proxies:\n  - !ip 173.245.48.0/20\n  - !ip 2400:cb00::/32")["proxies"]
+      expect(proxies.map(&:to_range).map(&:first)).to eq([IPAddr.new("173.245.48.0"), IPAddr.new("2400:cb00::")])
+      expect(proxies.first.include?("173.245.50.1")).to be(true)
+    end
+  end
+
   describe "!ref" do
     it "uses ref-ed value" do
       expect(Nero.load(<<~Y, environ: {})["domain"]).to eq("http://localhost:3000")
